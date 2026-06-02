@@ -4,7 +4,7 @@ project:
 website:
   title: "Satwik Ghanta"
   description: "Personal space of Satwik Ghanta"
-  site-url: "https://satwikghanta.github.io"
+  site-url: "https://yasat.github.io"
   navbar:
     search: true
     left:
@@ -24,7 +24,7 @@ website:
         text: CV
     right:
       - icon: github
-        href: https://github.com/satwikghanta
+        href: https://github.com/yasat
         aria-label: GitHub
       - icon: google
         href: https://scholar.google.com

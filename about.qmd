@@ -1,24 +1,32 @@
 ---
-title: "About"
----
+## title: "About"
 
-I am **Your Name**, a researcher at **Your Institution**.
+I am **Satwik Ghanta**, a PhD candidate in **Computing Science** at the **University of Glasgow**, with a research focus on **Sustainable Software Engineering**.
 
-My work focuses on **your main research area**. I use approaches such as **method one**, **method two**, and **method three** to study **your topic**.
+My research sits at the intersection of **empirical software engineering**, **sustainability for software engineering**, **responsible AI for software engineering**, and **human-computer interaction for software engineering**. I am particularly interested in the human and organisational dimensions of sustainability in software development, including how software teams reason about sustainability, how sustainability becomes part of development practices, and how it can shape decision making in software engineering contexts.
 
 ## Bio
 
-Write a short biography here. Include your current role, background, and what motivates your research.
+I am a Computing Science PhD candidate at the University of Glasgow working on sustainability in software engineering teams. My work explores how sustainability can be understood, discussed, and integrated into software engineering practice, especially within real-world development teams and organisational settings.
+
+I am also interested in how emerging AI technologies, especially large language models, influence software engineering practice. This includes responsible AI, sustainability-aware AI-assisted development, and the role of AI tools in supporting developers, educators, and practitioners.
+
+Beyond sustainability and software engineering, I am interested in fairness, values, and stakeholder participation in AI systems. I am especially drawn to questions around how people without technical AI backgrounds understand, evaluate, and shape AI systems in ways that reflect their own values and lived experiences.
+
+My broader aim is to contribute to software engineering research that is empirically grounded, socially responsible, and attentive to the people, practices, and organisations that shape technology. I am motivated by research that connects technical systems with human values, sustainable practice, and positive societal impact.
 
 ## Interests
 
-- Research area one
-- Research area two
-- Research area three
-- Methods, tools, or communities you work with
+* Sustainable software engineering
+* Empirical software engineering
+* Sustainability in software development teams
+* Responsible AI for software engineering
+* Human-computer interaction for software engineering
+* AI-assisted software development
+* Fairness, values, and stakeholder participation in AI systems
+* Human and organisational dimensions of software engineering
 
 ## Contact
 
-Email: [you@example.com](mailto:you@example.com)  
-Office: Your office or lab address  
-Institution: Your university or organization
+Email: [y.ghanta.1@research.gla.ac.uk](mailto:y.ghanta.1@research.gla.ac.uk)
+Institution: University of Glasgow

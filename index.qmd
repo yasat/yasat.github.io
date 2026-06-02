@@ -1,47 +1,55 @@
 ---
-title: "Your Name"
-subtitle: "Researcher in your field"
+title: "Satwik Ghanta"
+subtitle: "PhD candidate in Sustainable Software Engineering"
 page-layout: full
 ---
 
 ::: {.hero}
-![](assets/profile-placeholder.svg){fig-alt="Profile placeholder" width="180"}
+![](assets/profile-placeholder.svg){fig-alt="Profile photo of Satwik Ghanta" width="180"}
 
-# Your Name
+# Satwik Ghanta
 
-I am a researcher working on **your research area**, with interests in **topic 1**, **topic 2**, and **topic 3**.
+I am a PhD candidate in **Computing Science** at the **University of Glasgow**, working on **Sustainable Software Engineering**, **Responsible AI for Software Engineering**, and **Human-Computer Interaction for Software Engineering**.
 
-[Email me](mailto:you@example.com){.btn .btn-primary} [View publications](publications.qmd){.btn .btn-secondary}
+My research explores how software teams understand, reason about, and integrate sustainability into development practice, with particular attention to the human, organisational, and technical dimensions of software engineering.
+
+[Email me](mailto:y.ghanta.1@research.gla.ac.uk){.btn .btn-primary} [View publications](publications.qmd){.btn .btn-secondary}
 :::
 
 ## Research focus
 
-Write 2 to 4 sentences about your research. Mention the big problem you work on, your methods, and the kinds of systems, communities, or datasets you study.
+My research focuses on sustainability in software engineering teams and organisations. I study how sustainability is interpreted in real-world software development settings, how it becomes part of everyday practice, and what challenges teams face when trying to make software engineering more sustainable.
+
+I am especially interested in empirical software engineering, sustainability-aware software practices, responsible AI, and the role of human values in technical decision making. My work connects software engineering with organisational practice, stakeholder participation, and the design of tools and processes that support more socially responsible technology development.
 
 ## Recent updates
 
-- **June 2026:** Add your latest publication, talk, project, award, or teaching update.
-- **May 2026:** Add another update here.
-- **April 2026:** Add another update here.
+- **March 2026:** Our paper **"Practical Feasibility of Sustainable Software Engineering Tools and Techniques"** was accepted to the **FSE 2026 Industry Papers** track.
+- **January 2026:** Our preprint **"Empowering Affected Individuals to Shape AI Fairness Assessments: Processes, Criteria, and Tools"** became available.
+- **2025:** Our paper **"Perspectives, Needs and Challenges for Sustainable Software Engineering Teams: A FinServ Case Study"** was published at **ESEM 2025**.
 
 ## Selected work
 
 ::: {.grid}
 ::: {.g-col-12 .g-col-md-4}
-### Project one
+### Sustainable Software Engineering Teams
 
-A short summary of a research project, dataset, software tool, or field study.
+I study how software practitioners and organisations understand sustainability, what challenges they face, and how sustainability can be meaningfully integrated into software engineering practice.
 :::
 
 ::: {.g-col-12 .g-col-md-4}
-### Project two
+### Sustainable Software Tools and Techniques
 
-A short summary of another project and why it matters.
+My work examines the practical feasibility of sustainable software engineering tools in real-world industrial contexts, including how practitioners evaluate tools based on workflow fit, data requirements, interpretability, and organisational constraints.
 :::
 
 ::: {.g-col-12 .g-col-md-4}
-### Project three
+### Responsible and Participatory AI
 
-A short summary of your third featured item.
+I am interested in how people affected by AI systems can participate in shaping fairness assessments, especially in high-stakes contexts where fairness, values, and lived experiences matter.
 :::
 :::
+
+## Background
+
+Alongside my PhD, I have experience as a software engineer working on web-based applications and software projects. This practical background informs my research interest in software teams, developer practices, sustainable coding, security, and the organisational realities that shape software engineering work.

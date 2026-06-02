@@ -1,0 +1,24 @@
+---
+title: "About"
+---
+
+I am **Your Name**, a researcher at **Your Institution**.
+
+My work focuses on **your main research area**. I use approaches such as **method one**, **method two**, and **method three** to study **your topic**.
+
+## Bio
+
+Write a short biography here. Include your current role, background, and what motivates your research.
+
+## Interests
+
+- Research area one
+- Research area two
+- Research area three
+- Methods, tools, or communities you work with
+
+## Contact
+
+Email: [you@example.com](mailto:you@example.com)  
+Office: Your office or lab address  
+Institution: Your university or organization

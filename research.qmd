@@ -1,0 +1,32 @@
+---
+title: "Research"
+---
+
+## Overview
+
+Describe your research agenda in 1 to 3 paragraphs.
+
+## Themes
+
+### Theme 1
+
+Describe the first strand of your research.
+
+### Theme 2
+
+Describe the second strand of your research.
+
+### Theme 3
+
+Describe the third strand of your research.
+
+## Methods
+
+- Qualitative interviews
+- Surveys
+- Experiments
+- Field studies
+- Computational analysis
+- Design research
+
+Edit this list to match your own work.

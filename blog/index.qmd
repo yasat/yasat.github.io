@@ -1,0 +1,10 @@
+---
+title: "Blog"
+listing:
+  contents: "*.qmd"
+  sort: "date desc"
+  type: default
+page-layout: full
+---
+
+Use this section for research notes, reading notes, conference reflections, tutorials, or project updates.

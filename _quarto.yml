@@ -1,0 +1,47 @@
+project:
+  type: website
+
+website:
+  title: "Satwik Ghanta"
+  description: "Personal space of Satwik Ghanta"
+  site-url: "https://satwikghanta.github.io"
+  navbar:
+    search: true
+    left:
+      - href: index.qmd
+        text: Home
+      - href: about.qmd
+        text: About
+      - href: research.qmd
+        text: Research
+      - href: publications.qmd
+        text: Publications
+      - href: projects.qmd
+        text: Projects
+      - href: teaching.qmd
+        text: Teaching
+      - href: cv/index.qmd
+        text: CV
+    right:
+      - icon: github
+        href: https://github.com/satwikghanta
+        aria-label: GitHub
+      - icon: google
+        href: https://scholar.google.com
+        aria-label: Google Scholar
+      - icon: envelope
+        href: mailto:you@example.com
+        aria-label: Email
+  page-footer:
+    left: "© 2026 Satwik Ghanta"
+    right: "Built with Quarto"
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    link-external-newwindow: true
+
+execute:
+  freeze: auto

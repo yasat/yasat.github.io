@@ -1,0 +1,23 @@
+---
+title: "Teaching"
+---
+
+## Courses
+
+### Course title
+
+Role: Lecturer, teaching assistant, guest lecturer, or supervisor  
+Institution: Your institution  
+Year: 2026
+
+Short description of the course.
+
+## Supervision
+
+Add information about student projects, dissertation topics, or supervision interests.
+
+## Teaching materials
+
+- [Lecture notes](#)
+- [Workshop materials](#)
+- [Tutorials](#)

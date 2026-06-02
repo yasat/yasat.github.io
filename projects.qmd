@@ -1,0 +1,19 @@
+---
+title: "Projects"
+---
+
+## Project one
+
+Describe the project, your role, collaborators, funding if relevant, and outputs.
+
+Links: [Paper](#), [Code](#), [Dataset](#), [Project page](#)
+
+## Project two
+
+Describe another project.
+
+Links: [Paper](#), [Code](#), [Dataset](#), [Project page](#)
+
+## Project three
+
+Describe another project.

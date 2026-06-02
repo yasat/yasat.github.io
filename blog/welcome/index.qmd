@@ -1,0 +1,7 @@
+---
+title: "Welcome to my research website"
+date: "2026-06-02"
+categories: [news]
+---
+
+This is your first blog post. You can delete it later or edit it into an announcement about your research website.

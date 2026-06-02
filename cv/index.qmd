@@ -1,0 +1,26 @@
+---
+title: "CV"
+---
+
+You can either write your CV on this page or link to a PDF.
+
+[Download my CV](cv.pdf){.btn .btn-primary}
+
+## Education
+
+- PhD, Your Field, Your University, Year
+- MSc, Your Field, Your University, Year
+- BSc, Your Field, Your University, Year
+
+## Employment
+
+- Your current role, Your Institution, Year to present
+- Previous role, Previous Institution, Years
+
+## Awards and funding
+
+- Award or grant name, Year
+
+## Service
+
+- Reviewing, committee work, public engagement, or other service

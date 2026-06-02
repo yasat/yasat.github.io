@@ -1,0 +1,47 @@
+---
+title: "Your Name"
+subtitle: "Researcher in your field"
+page-layout: full
+---
+
+::: {.hero}
+![](assets/profile-placeholder.svg){fig-alt="Profile placeholder" width="180"}
+
+# Your Name
+
+I am a researcher working on **your research area**, with interests in **topic 1**, **topic 2**, and **topic 3**.
+
+[Email me](mailto:you@example.com){.btn .btn-primary} [View publications](publications.qmd){.btn .btn-secondary}
+:::
+
+## Research focus
+
+Write 2 to 4 sentences about your research. Mention the big problem you work on, your methods, and the kinds of systems, communities, or datasets you study.
+
+## Recent updates
+
+- **June 2026:** Add your latest publication, talk, project, award, or teaching update.
+- **May 2026:** Add another update here.
+- **April 2026:** Add another update here.
+
+## Selected work
+
+::: {.grid}
+::: {.g-col-12 .g-col-md-4}
+### Project one
+
+A short summary of a research project, dataset, software tool, or field study.
+:::
+
+::: {.g-col-12 .g-col-md-4}
+### Project two
+
+A short summary of another project and why it matters.
+:::
+
+::: {.g-col-12 .g-col-md-4}
+### Project three
+
+A short summary of your third featured item.
+:::
+:::

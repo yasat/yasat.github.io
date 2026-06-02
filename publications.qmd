@@ -1,0 +1,27 @@
+---
+title: "Publications"
+---
+
+## Selected publications
+
+Replace these examples with your own publications.
+
+### 2026
+
+**Your Name**, Coauthor Name, and Coauthor Name. 2026. *Title of your paper*. Conference or Journal Name. [PDF](#) [Code](#) [Data](#)
+
+### 2025
+
+**Your Name** and Coauthor Name. 2025. *Another paper title*. Conference or Journal Name. [PDF](#)
+
+### 2024
+
+Coauthor Name and **Your Name**. 2024. *Another publication title*. Journal Name. [DOI](#)
+
+## Working papers
+
+- **Your Name**. *Working paper title*. Under review.
+
+## Publication maintenance tip
+
+For a small website, a manual publication list is easiest. Later, you can connect a BibTeX file and let Quarto format the bibliography automatically.

@@ -1,5 +1,6 @@
 ---
-## title: "About"
+title: "About"
+---
 
 I am **Satwik Ghanta**, a PhD candidate in **Computing Science** at the **University of Glasgow**, with a research focus on **Sustainable Software Engineering**.
 

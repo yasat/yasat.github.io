@@ -2,31 +2,78 @@
 title: "Research"
 ---
 
-## Overview
+My research focuses on **Sustainable Software Engineering**, with a particular interest in how sustainability becomes part of real-world software engineering practice. I study the people, teams, tools, organisational cultures, and decision-making processes that shape how sustainability is understood and acted upon in software development.
 
-Describe your research agenda in 1 to 3 paragraphs.
+My work sits at the intersection of **empirical software engineering**, **sustainability for software engineering**, **responsible AI for software engineering**, and **human-computer interaction for software engineering**.
 
-## Themes
+## Research themes
 
-### Theme 1
+### Sustainable Software Engineering in practice
 
-Describe the first strand of your research.
+A central theme of my research is understanding how software teams reason about sustainability in their everyday work. I am interested in how practitioners define sustainability, how they prioritise sustainability alongside delivery pressures, security, maintainability, performance, and cost, and how organisations can support teams in making sustainability part of software engineering practice.
 
-### Theme 2
+This work pays particular attention to the human and organisational dimensions of sustainability, including workload, stress, team culture, communication, governance structures, and the gap between strategic organisational goals and developers' day-to-day experiences.
 
-Describe the second strand of your research.
+### Sustainability in software engineering teams
 
-### Theme 3
+My PhD research explores how sustainability can be introduced into software engineering teams in ways that are meaningful, practical, and context-sensitive. Rather than treating sustainability only as a technical optimisation problem, I study how sustainability mindsets, practices, and cultures emerge within teams and organisations.
 
-Describe the third strand of your research.
+I am especially interested in regulated and data-intensive domains, where software engineering decisions are shaped by compliance, security, legacy systems, client needs, and organisational processes.
+
+### Sustainable software engineering tools and techniques
+
+I also study the practical feasibility of sustainable software engineering tools and techniques. This includes how practitioners evaluate tools for energy measurement, green refactoring, workload management, and other sustainability-related activities.
+
+My work considers whether tools fit into existing development workflows, whether they require acceptable levels of data access, whether their outputs are understandable and actionable, and how organisational constraints affect adoption.
+
+### Responsible AI for software engineering
+
+I am interested in how emerging AI technologies, especially large language models, influence software engineering practice. This includes questions around responsible AI-assisted development, sustainability-aware AI support, developer trust, educational use of AI tools, and the impact of AI systems on software engineering work.
+
+I am particularly interested in how AI tools can support developers, educators, and practitioners without overlooking issues of responsibility, fairness, transparency, sustainability, and human judgement.
+
+### Fairness, values, and stakeholder participation in AI
+
+Beyond software sustainability, I am interested in how people affected by AI systems can participate in shaping how those systems are evaluated. This includes work on AI fairness, stakeholder-defined fairness criteria, value-sensitive design, and participatory approaches to AI assessment.
+
+I am especially drawn to questions about how people without technical AI backgrounds understand AI systems, express fairness concerns, and contribute their own values and lived experiences to the design and evaluation of AI technologies.
 
 ## Methods
 
-- Qualitative interviews
-- Surveys
-- Experiments
-- Field studies
-- Computational analysis
-- Design research
+My research is empirically grounded and uses qualitative and mixed-methods approaches, including:
 
-Edit this list to match your own work.
+- Interviews with software practitioners and stakeholders
+- Focus groups and workshops
+- Qualitative case studies
+- Surveys
+- Thematic analysis
+- Interactive prototypes and tool-based studies
+- Practitioner-centred evaluation of software engineering tools
+
+I aim to conduct research that is methodologically rigorous, practically useful, and attentive to the social and organisational contexts in which software is developed.
+
+## Current and recent work
+
+::: {.grid}
+::: {.g-col-12 .g-col-md-4}
+### Sustainability in software teams
+
+I investigate how software engineers, team leads, and managers understand sustainability, what challenges they face, and how sustainability can be introduced into team practices in ways that align with real development contexts.
+:::
+
+::: {.g-col-12 .g-col-md-4}
+### Feasibility of SSE tools
+
+I study how practitioners perceive sustainable software engineering tools and techniques, especially in regulated industrial environments where workflow fit, security, compliance, and interpretability are essential.
+:::
+
+::: {.g-col-12 .g-col-md-4}
+### Participatory AI fairness
+
+I contribute to research on how affected individuals can shape AI fairness assessments by defining fairness criteria that reflect their own values, concerns, and experiences.
+:::
+:::
+
+## Research aim
+
+My broader aim is to contribute to software engineering research that is **empirically grounded**, **socially responsible**, and **attentive to the people, practices, and organisations that shape technology**. I am motivated by research that connects technical systems with human values, sustainable practice, and positive societal impact.

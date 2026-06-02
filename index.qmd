@@ -9,7 +9,7 @@ page-layout: full
 
 # Satwik Ghanta
 
-I am a PhD candidate in **Computing Science** at the **University of Glasgow**, working on **Sustainable Software Engineering**, **Responsible AI for Software Engineering**, and **Human-Computer Interaction for Software Engineering**.
+I am a PhD candidate in **Computing Science** at the **University of Glasgow**, working on **Sustainable Software Engineering**.
 
 My research explores how software teams understand, reason about, and integrate sustainability into development practice, with particular attention to the human, organisational, and technical dimensions of software engineering.
 

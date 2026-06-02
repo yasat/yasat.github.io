@@ -2,26 +2,72 @@
 title: "Publications"
 ---
 
-## Selected publications
+This page lists my publications and preprints. My work focuses on **Sustainable Software Engineering**, **Responsible AI**, **AI fairness**, and **human-centred software engineering**.
 
-Replace these examples with your own publications.
+For the most up-to-date list, please also see my [Google Scholar profile](https://scholar.google.com/citations?user=WJTqjlUAAAAJ), [ORCID profile](https://orcid.org/0009-0003-1110-055X), and [University of Glasgow profile](https://www.gla.ac.uk/schools/computing/staff/yogendranagasatwikghanta/).
+
+## Conference papers
 
 ### 2026
 
-**Your Name**, Coauthor Name, and Coauthor Name. 2026. *Title of your paper*. Conference or Journal Name. [PDF](#) [Code](#) [Data](#)
+**Practical Feasibility of Sustainable Software Engineering Tools and Techniques**  
+Satwik Ghanta, Peggy Gregory, and Gül Çalıklı.  
+In *ACM International Conference on the Foundations of Software Engineering (FSE 2026)*, Montreal, Canada, 5-9 July 2026. Accepted for publication.  
+[[arXiv](https://arxiv.org/abs/2603.29056)] [[DOI](https://doi.org/10.48550/arXiv.2603.29056)]
+
+This paper investigates how software practitioners perceive the feasibility of Sustainable Software Engineering tools and techniques in industrial workflows, especially in regulated environments. It studies practitioner preferences around tool installation, data requirements, workflow integration, and output formats.
 
 ### 2025
 
-**Your Name** and Coauthor Name. 2025. *Another paper title*. Conference or Journal Name. [PDF](#)
+**Perspectives, Needs and Challenges for Sustainable Software Engineering Teams: A FinServ Case Study**  
+Yogendra Naga Satwik Ghanta, Peggy Gregory, and Gul Calikli.  
+In *19th ACM/IEEE International Symposium on Empirical Software Engineering and Measurement (ESEM 2025)*, Honolulu, HI, USA, 28 September - 3 October 2025, pp. 196-206.  
+[[Publisher DOI](https://doi.org/10.1109/ESEM64174.2025.00022)] [[University repository](https://eprints.gla.ac.uk/359049/)] [[arXiv](https://arxiv.org/abs/2509.12466)]
 
-### 2024
+This paper presents a qualitative case study of sustainability in a financial services software engineering context. It examines how sustainability is understood across organisational levels, the challenges teams face, and why context-sensitive and co-designed sustainability interventions matter.
 
-Coauthor Name and **Your Name**. 2024. *Another publication title*. Journal Name. [DOI](#)
+## Preprints
 
-## Working papers
+### 2026
 
-- **Your Name**. *Working paper title*. Under review.
+**Empowering Affected Individuals to Shape AI Fairness Assessments: Processes, Criteria, and Tools**  
+Lin Luo, Satwik Ghanta, Yuri Nakao, Mathieu Chollet, and Simone Stumpf.  
+arXiv preprint, 2026.  
+[[arXiv](https://arxiv.org/abs/2602.06984)] [[DOI](https://doi.org/10.48550/arXiv.2602.06984)]
 
-## Publication maintenance tip
+This work explores how people affected by AI systems can articulate fairness concerns and turn them into concrete criteria for AI fairness assessment. It contributes to participatory and value-sensitive approaches for evaluating AI systems.
 
-For a small website, a manual publication list is easiest. Later, you can connect a BibTeX file and let Quarto format the bibliography automatically.
+## BibTeX
+
+```bibtex
+@inproceedings{ghanta2026practical,
+  title = {Practical Feasibility of Sustainable Software Engineering Tools and Techniques},
+  author = {Ghanta, Satwik and Gregory, Peggy and {\c{C}}al{\i}kl{\i}, G{\"u}l},
+  booktitle = {ACM International Conference on the Foundations of Software Engineering (FSE 2026)},
+  year = {2026},
+  note = {Accepted for publication},
+  doi = {10.48550/arXiv.2603.29056},
+  url = {https://arxiv.org/abs/2603.29056}
+}
+
+@inproceedings{ghanta2025perspectives,
+  title = {Perspectives, Needs and Challenges for Sustainable Software Engineering Teams: A FinServ Case Study},
+  author = {Ghanta, Yogendra Naga Satwik and Gregory, Peggy and Calikli, Gul},
+  booktitle = {19th ACM/IEEE International Symposium on Empirical Software Engineering and Measurement (ESEM 2025)},
+  pages = {196--206},
+  year = {2025},
+  doi = {10.1109/ESEM64174.2025.00022},
+  url = {https://eprints.gla.ac.uk/359049/}
+}
+
+@misc{luo2026empowering,
+  title = {Empowering Affected Individuals to Shape AI Fairness Assessments: Processes, Criteria, and Tools},
+  author = {Luo, Lin and Ghanta, Satwik and Nakao, Yuri and Chollet, Mathieu and Stumpf, Simone},
+  year = {2026},
+  eprint = {2602.06984},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CY},
+  doi = {10.48550/arXiv.2602.06984},
+  url = {https://arxiv.org/abs/2602.06984}
+}
+```

@@ -16,21 +16,21 @@ website:
         text: Research
       - href: publications.qmd
         text: Publications
-      - href: projects.qmd
-        text: Projects
-      - href: teaching.qmd
-        text: Teaching
-      - href: cv/index.qmd
-        text: CV
+      # - href: projects.qmd
+      #   text: Projects
+      # - href: teaching.qmd
+      #   text: Teaching
+      # - href: cv/index.qmd
+      #   text: CV
     right:
       - icon: github
         href: https://github.com/yasat
         aria-label: GitHub
       - icon: google
-        href: https://scholar.google.com
+        href: https://scholar.google.com/citations?user=WJTqjlUAAAAJ&hl=en
         aria-label: Google Scholar
       - icon: envelope
-        href: mailto:you@example.com
+        href: mailto:y.ghanta.1@research.gla.ac.uk
         aria-label: Email
   page-footer:
     left: "© 2026 Satwik Ghanta"

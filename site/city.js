@@ -287,11 +287,11 @@
     const c=state.car, fx=Math.sin(c.yaw),fz=Math.cos(c.yaw);
     // Keep the camera inside the building wall even on the perimeter loop.
     // Aim toward the car and the next stretch of road, not through a facade.
-    const px=clamp(c.x-fx*185,-664,664),py=139,
-          pz=clamp(c.z-fz*185,-664,664);
+    const px=clamp(c.x-fx*95,-664,664),py=58,
+          pz=clamp(c.z-fz*95,-664,664);
     const followGap=Math.max(32,(c.x-px)*fx+(c.z-pz)*fz);
-    const ahead=followGap*.66;
-    let dx=c.x+fx*ahead-px,dy=-139,dz=c.z+fz*ahead-pz;
+    const ahead=followGap*.50;
+    let dx=c.x+fx*ahead-px,dy=-58,dz=c.z+fz*ahead-pz;
     const len=Math.hypot(dx,dy,dz);dx/=len;dy/=len;dz/=len;
     const horizontal=Math.hypot(dx,dz);
     const rx=dz/horizontal,rz=-dx/horizontal,ux=dy*rz,uy=horizontal,uz=-dy*rx;

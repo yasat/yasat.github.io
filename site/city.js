@@ -283,7 +283,7 @@
   function resize() {
     const r=canvas.getBoundingClientRect();
     W=Math.max(1,r.width);H=Math.max(1,r.height);
-    dpr=Math.min(window.devicePixelRatio||1,2);
+    dpr=Math.min(window.devicePixelRatio||1,1.6);
     canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
     scale=Math.min(W*.88,H*1.08);

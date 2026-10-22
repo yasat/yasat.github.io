@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c171b" />
   <meta name="description" content="Drive through the research, publications, teaching and software engineering journey of Satwik Ghanta, PhD researcher at the University of Glasgow." />
   <meta property="og:title" content="Satwik Ghanta | The Driving Game" />
-  <meta property="og:description" content="A top-down interactive research portfolio. Drive a tiny car through eight districts and discover my work." />
+  <meta property="og:description" content="A top-down interactive research portfolio. Drive a remote control car around a miniature research arena on my desk." />
   <title>Drive Through My Research | Satwik Ghanta</title>
   <link rel="canonical" href="https://yasat.github.io/game.html" />
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
@@ -36,12 +36,13 @@
     <main class="game-stage" id="stage">
       <canvas id="world" tabindex="0" aria-label="Top-down driving map. Use the arrow keys or W A S D to drive through resume blocks. Use district buttons to navigate without driving."></canvas>
       <div class="canvas-vignette" aria-hidden="true"></div>
-      <div class="scene-meta" aria-hidden="true"><span class="live-dot"></span> INTERACTIVE RESUME <span class="meta-sep">/</span> EDITION 2026</div>
+      <div class="scene-meta" aria-hidden="true"><span class="live-dot"></span> RC RESEARCH CIRCUIT <span class="meta-sep">/</span> DESKTOP EDITION</div>
+      <button class="desk-view-button" id="deskViewToggle" type="button" aria-pressed="false">View whole desk</button>
 
       <aside class="map-panel" id="mapPanel" aria-label="Map and district navigation">
         <div class="eyebrow">THE WORLD MAP</div>
         <h1>One career.<br /><em>Eight districts.</em></h1>
-        <p class="map-description">Every neighbourhood tells a little part of my story. Drive through the cards to discover what I've been working on.</p>
+        <p class="map-description">The eight neighbourhoods are printed on a miniature track, surrounded by a protective rail. Drive your little RC car through the cards to discover my work.</p>
         <div class="map-menu-heading"><span>EXPLORE DISTRICTS</span><span>01 - 08</span></div>
         <nav id="districtNav" class="district-nav" aria-label="Jump to district"></nav>
         <div class="map-footer"><span class="map-footer-glyph">+</span><span>Break a card, find a story.<br />It resets when you drive away.</span></div>
@@ -87,8 +88,8 @@
     <div class="intro-card">
       <div class="intro-left">
         <div class="intro-eyebrow">AN INTERACTIVE RESEARCH PORTFOLIO <span> / 2026</span></div>
-        <h2 id="introTitle">Not your<br />usual <em>resume.</em></h2>
-        <p>Hi, I'm <strong>Satwik</strong>, a PhD researcher in Computing Science at the University of Glasgow. Instead of scrolling through my career, how about taking it for a drive?</p>
+        <h2 id="introTitle">Your research.<br />One tiny <em>RC car.</em></h2>
+        <p>Hi, I'm <strong>Satwik</strong>, a PhD researcher in Computing Science at the University of Glasgow. I built a tiny RC car arena on my desk. Drive past the laptop and books, steer around the miniature map, and discover my work.</p>
         <div class="intro-controls"><span>DRIVING CONTROLS</span><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>or arrow keys to drive</span></div>
         <div class="intro-buttons"><button type="button" class="start-button" id="startButton">Start driving</button><a href="index.html" class="skip-intro">Read the text resume</a></div>
       </div>
@@ -96,8 +97,8 @@
         <div class="art-grid"></div><div class="art-road road-one"></div><div class="art-road road-two"></div>
         <div class="art-card card-one"><small>01 / RESEARCH</small><strong>SUSTAINABLE<br />SOFTWARE</strong></div>
         <div class="art-card card-two"><small>02 / DISCOVER</small><strong>MAKE AN<br />IMPACT</strong></div>
-        <div class="art-car"><div class="art-windshield"></div><div class="art-roof"></div></div>
-        <div class="art-label">A LITTLE JOURNEY THROUGH A LOT OF WORK</div>
+        <div class="art-car"><div class="art-windshield"></div><div class="art-roof"></div><div class="art-antenna"></div></div>
+        <div class="art-label">A DESK-SIZED JOURNEY THROUGH MY RESEARCH</div>
       </div>
       <button class="intro-close" id="introClose" type="button" aria-label="Close introduction and start driving">X</button>
     </div>

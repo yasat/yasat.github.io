@@ -1,4 +1,16 @@
-# Satwik Ghanta - portfolio, 2D drive and 3D research city (Version 6)
+## Version 7: RC tabletop driving arena
+
+The original 2D driving game is now presented as a miniature remote-control car circuit sitting on a writing desk. This update changes only the 2D game in `site/game.js`, `site/game.html`, and `site/styles.css`. The professional text resume and the 3D city are preserved.
+
+- A continuous four-sided raised foam barrier and a perimeter driving road enclose the playable arena. Collision logic stops the car from leaving the track.
+- The top-down RC car has a small rear whip antenna with a bright red tip.
+- The world includes a laptop, books, notebook, desk lamp, coffee mug, pocket-sized phone, pen and pencils, at consistent sizes relative to the RC car.
+- A `View whole desk` button toggles an overview so visitors can see the physical tabletop arrangement. The car stops while in overview.
+- All résumé blocks, controls and respawn rules are kept intact.
+
+**Scale guide:** The RC car measures about 40 x 70 game units; the phone 48 x 99; the pen 12 x 148; the laptop 556 x 388; and the primary book 400 x 500. Everything is drawn at that same world scale.
+
+# Satwik Ghanta - portfolio, 2D drive and 3D research city (Version 7)
 
 A static GitHub Pages-ready academic portfolio with three separate ways to explore:
 
@@ -72,7 +84,7 @@ The included `.github/workflows/deploy.yml` publishes the contents of `site/`. T
 The 3D city is a low-poly game, not a photorealistic GTA-level world. The preferred renderer is built-in WebGL2 or WebGL1, with a Canvas2D fallback. No external JavaScript library is required. Always check research details and publication statuses before publishing.
 
 
-## Version 6 rendering fixes
+## Version 7 rendering fixes
 
 The 3D city now uses built-in WebGL2 or WebGL1 when available (no dependencies). The entire road, pavement and grass layer is baked into a single continuous ground texture, eliminating overlapped-road flicker and holes. Billboards are static, perspective-correct world surfaces with identical printed content on both readable sides; the letters are never animated or rotated toward the driver. Proper depth testing keeps them behind buildings. The requested closer chase camera uses distance 95, height 58, and look-ahead 0.50. When its line of sight would pass through a building or fixed sign, the camera moves closer to the car temporarily; the sign never moves. A Canvas2D fallback with the same continuous ground artwork remains for browsers without WebGL. Modern browsers with WebGL have real depth testing and perspective-correct print surfaces.
 

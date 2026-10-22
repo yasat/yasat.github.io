@@ -9,8 +9,11 @@
   const miniCtx = miniCanvas.getContext('2d');
   if (!ctx) return;
 
-  const WORLD = { width: 4000, height: 3350 };
-  const car = { x: 2010, y: 1580, angle: -Math.PI / 2, speed: 0 };
+  // All dimensions use one tabletop scale. The RC car is 40 x 70 units;
+  // a smartphone is about 48 x 92, a pen 155 long and a laptop 550 wide.
+  const ARENA = { x: 740, y: 580, w: 4000, h: 3350, rail: 42 };
+  const WORLD = { width: 5500, height: 4550 };
+  const car = { x: ARENA.x + 2010, y: ARENA.y + 1580, angle: -Math.PI / 2, speed: 0 };
   const camera = { x: 0, y: 0 };
   const keys = new Set();
   const picked = new Set();
@@ -27,9 +30,12 @@
   const intro = document.getElementById('introOverlay');
   const startButton = document.getElementById('startButton');
   const toast = document.getElementById('toast');
+  const deskToggle = document.getElementById('deskViewToggle');
+  let overview = false;
   let started = false, lastTime = 0, w = 1, h = 1, dpr = 1, currentZoneId = null, toastUntil = 0;
 
   for (const zone of zones) {
+    zone.x += ARENA.x; zone.y += ARENA.y;
     zone.blocks = zone.items.map((item, index) => ({
       ...item,
       id: `${zone.id}-${index}`,
@@ -88,7 +94,7 @@
   function update(dt, time) {
     const up = keys.has('up'), down = keys.has('down');
     const left = keys.has('left'), right = keys.has('right');
-    if (started) {
+    if (started && !overview) {
       const acceleration = (up ? 650 : 0) - (down ? 510 : 0);
       car.speed += acceleration * dt;
       if (!up && !down) {
@@ -101,9 +107,14 @@
         const reverser = car.speed < -5 ? -1 : 1;
         car.angle += steer * 2.45 * dt * clamp(Math.abs(car.speed) / 155, .36, 1.3) * reverser;
       }
-      car.x = clamp(car.x + Math.cos(car.angle) * car.speed * dt, 48, WORLD.width - 48);
-      car.y = clamp(car.y + Math.sin(car.angle) * car.speed * dt, 48, WORLD.height - 48);
-      if ((car.x <= 48 || car.x >= WORLD.width - 48 || car.y <= 48 || car.y >= WORLD.height - 48) && Math.abs(car.speed) > 100) car.speed *= .8;
+      // Foam rails form a solid, collision-tested boundary on all four sides.
+      const nx = car.x + Math.cos(car.angle) * car.speed * dt;
+      const ny = car.y + Math.sin(car.angle) * car.speed * dt;
+      const xmin = ARENA.x + ARENA.rail + 38, xmax = ARENA.x + ARENA.w - ARENA.rail - 38;
+      const ymin = ARENA.y + ARENA.rail + 38, ymax = ARENA.y + ARENA.h - ARENA.rail - 38;
+      car.x = clamp(nx, xmin, xmax);
+      car.y = clamp(ny, ymin, ymax);
+      if (nx !== car.x || ny !== car.y) car.speed *= -.13;
     }
     centerCamera(false, dt);
     for (const block of blocks) {
@@ -171,6 +182,7 @@
   }
   function jumpTo(zone) {
     if (!started) begin();
+    if (overview) {overview=false;deskToggle.textContent='View whole desk';deskToggle.setAttribute('aria-pressed','false');deskToggle.classList.remove('is-overview');document.getElementById('stage').classList.remove('is-desk-overview');}
     car.x = zone.x + 219;
     car.y = zone.y + 146;
     car.speed = 0;
@@ -182,18 +194,30 @@
     canvas.focus({preventScroll:true});
   }
   function drawGround() {
-    ctx.fillStyle = '#deeee6'; ctx.fillRect(0, 0, w, h);
+    // The desk and its props are stationary world scenery, not player sprites.
+    ctx.fillStyle = '#9f7557'; ctx.fillRect(0, 0, w, h);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
-    rounded(0, 0, WORLD.width, WORLD.height, 0, '#e4f2dd', '#89b69c', 9);
-    // Very subtle contour lines, deliberately static/deterministic.
-    const spacing = 75;
-    ctx.strokeStyle = '#438e7040'; ctx.lineWidth = 1;
+    drawDesktop();
+    drawDeskObjects();
+    drawArenaBase();
+    ctx.save();
+    // Keep decorations strictly inside the raised play mat.
     ctx.beginPath();
-    for (let x = Math.floor(camera.x / spacing) * spacing; x <= camera.x + w + spacing; x += spacing) {
-      ctx.moveTo(x, Math.max(0, camera.y)); ctx.lineTo(x, Math.min(WORLD.height, camera.y + h));
+    ctx.rect(ARENA.x + ARENA.rail, ARENA.y + ARENA.rail,
+      ARENA.w - 2 * ARENA.rail, ARENA.h - 2 * ARENA.rail);
+    ctx.clip();
+    // Contour/grid printing on the miniature track.
+    const spacing = 75;
+    ctx.strokeStyle = '#438e7030'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    const ax = ARENA.x + ARENA.rail, ay = ARENA.y + ARENA.rail;
+    const ex = ARENA.x + ARENA.w - ARENA.rail;
+    const ey = ARENA.y + ARENA.h - ARENA.rail;
+    for (let x = Math.max(ax, Math.floor(camera.x / spacing) * spacing); x <= Math.min(ex, camera.x + w + spacing); x += spacing) {
+      ctx.moveTo(x, ay); ctx.lineTo(x, ey);
     }
-    for (let y = Math.floor(camera.y / spacing) * spacing; y <= camera.y + h + spacing; y += spacing) {
-      ctx.moveTo(Math.max(0, camera.x), y); ctx.lineTo(Math.min(WORLD.width, camera.x + w), y);
+    for (let y = Math.max(ay, Math.floor(camera.y / spacing) * spacing); y <= Math.min(ey, camera.y + h + spacing); y += spacing) {
+      ctx.moveTo(ax, y); ctx.lineTo(ex, y);
     }
     ctx.stroke();
     drawRoads();
@@ -201,31 +225,166 @@
     for (const zone of zones) if (rectVisible(zone.x, zone.y, zone.w, zone.h, 40)) drawZone(zone);
     drawStartPlaza();
     for (const block of blocks) if (rectVisible(block.x, block.y, block.w, block.h, 30) && !block.broken) drawBlock(block);
-    for (const p of particles) drawParticle(p);
+    for (const particle of particles) drawParticle(particle);
     drawCar();
     ctx.restore();
+    drawArenaRails();
+    ctx.restore();
+  }
+  // Walnut tabletop drawn at world scale. All props are decorative and kept
+  // outside the playable arena, which is surrounded by raised foam rails.
+  function drawDesktop() {
+    ctx.fillStyle = '#ae8162'; ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+    ctx.fillStyle = '#96674e'; ctx.fillRect(0, 0, WORLD.width, 21);
+    ctx.fillStyle = '#d5a886'; ctx.fillRect(0, 23, WORLD.width, 9);
+    for (let i = 0; i < 116; i++) {
+      const y = 45 + i * 39;
+      ctx.lineWidth = i % 5 === 0 ? 3 : 1;
+      ctx.strokeStyle = i % 4 === 0 ? '#6f49354a' : '#f6d3a523';
+      ctx.beginPath();ctx.moveTo(0, y);ctx.bezierCurveTo(1050, y - 7, 3200, y + 8, WORLD.width, y - 3);ctx.stroke();
+    }
+    // Warm, broad light falloff from a desk lamp rather than a gameplay effect.
+    const light = ctx.createRadialGradient(4880, 360, 60, 4880, 360, 1350);
+    light.addColorStop(0,'#fff3d13b');light.addColorStop(1,'#fff3d100');
+    ctx.fillStyle=light;ctx.fillRect(3550,0,1950,2000);
+  }
+  function drawDeskObjects() {
+    // Laptop: ~550 wide, many times the 40-unit RC car.
+    ctx.save();ctx.translate(360, 2200);ctx.rotate(-.075);
+    rounded(-276, -198, 552, 396, 22, '#493f3a4a');
+    rounded(-278, -215, 556, 388, 20, '#bac3be', '#68777a', 9);
+    rounded(-251, -190, 502, 312, 9, '#182e38', '#d9e8e3', 8);
+    const screen=ctx.createLinearGradient(-230,-160,230,130);
+    screen.addColorStop(0,'#244b50');screen.addColorStop(1,'#3d7074');
+    rounded(-233,-174,466,276,5,screen);
+    ctx.textAlign='center';ctx.fillStyle='#c0eed8';ctx.font='bold 31px system-ui';ctx.fillText('RESEARCH LAB',0,-62);
+    ctx.font='18px system-ui';ctx.fillStyle='#a8c6c3';ctx.fillText('University of Glasgow',0,-25);
+    for(let i=0;i<4;i++) rounded(-182,-2+i*27,340-i*22,7,3,i%2?'#81b8a181':'#d5c9a459');
+    rounded(-295,177,590,54,13,'#abb3af','#667475',5);
+    rounded(-60,194,120,19,5,'#879391');
+    ctx.restore();
+    // Books: ~330 by 460. Their shadows show they sit on the table.
+    ctx.save();ctx.translate(5060,900);ctx.rotate(.09);
+    rounded(-205,-282,412,518,15,'#5d413c59');
+    rounded(-220,-298,400,500,12,'#db8e6e','#875b4f',10);
+    rounded(-201,-280,363,469,8,'#f7edda','#d8c7ae',4);
+    rounded(-197,-280,53,469,4,'#b57557');
+    ctx.save();ctx.translate(-22,-20);ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='#365d56';ctx.textAlign='center';ctx.font='bold 29px system-ui';ctx.fillText('SOFTWARE ENGINEERING',0,0);
+    ctx.restore();ctx.restore();
+    ctx.save();ctx.translate(5040,3550);ctx.rotate(-.12);
+    rounded(-205,-232,420,485,17,'#554b465a');
+    rounded(-215,-245,403,470,14,'#6c8f83','#415e59',9);
+    rounded(-196,-226,360,427,9,'#f0e7d7');
+    for(let i=0;i<17;i++){ctx.strokeStyle='#8ba5a164';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-151,-180+i*22);ctx.lineTo(124,-180+i*22);ctx.stroke();}
+    ctx.fillStyle='#2c6762';ctx.font='bold 26px system-ui';ctx.fillText('LAB NOTES',-147,-185);ctx.restore();
+    // Single pocket-sized phone, about the same footprint as the RC car.
+    ctx.save();ctx.translate(4966,1880);ctx.rotate(.31);
+    rounded(-28,-52,56,106,13,'#3e4c4c77');
+    rounded(-24,-50,48,99,10,'#1c3d44','#161c24',5);
+    rounded(-20,-41,40,79,4,'#8fcbb6');
+    rounded(-10,-37,20,3,2,'#285953');
+    ctx.restore();
+    // Ballpoint: 145 units long; similar length to a phone, not a giant prop.
+    ctx.save();ctx.translate(5010,2410);ctx.rotate(-.66);
+    rounded(-6,-77,12,148,4,'#256361','#153d45',3);
+    rounded(-6,-42,12,16,2,'#eecb8f');
+    ctx.beginPath();ctx.moveTo(-6,70);ctx.lineTo(0,89);ctx.lineTo(6,70);ctx.fillStyle='#ddd6c7';ctx.fill();
+    ctx.restore();
+    // Desk lamp base and the visible arm at the top of the table.
+    ctx.save();ctx.translate(5040,380);ctx.rotate(-.13);
+    ctx.fillStyle='#483d3669';ctx.beginPath();ctx.ellipse(14,19,137,120,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#344b4a';ctx.beginPath();ctx.ellipse(0,0,134,115,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#94a8a0';ctx.beginPath();ctx.ellipse(-10,-9,93,79,0,0,Math.PI*2);ctx.fill();
+    rounded(-8,-234,16,194,6,'#627975');
+    ctx.beginPath();ctx.moveTo(-117,-259);ctx.lineTo(117,-259);ctx.lineTo(89,-181);ctx.lineTo(-89,-181);ctx.closePath();ctx.fillStyle='#efdbc0';ctx.fill();
+    ctx.strokeStyle='#385552';ctx.lineWidth=8;ctx.stroke();ctx.restore();
+    // Colour pencils near the bottom left of the desk.
+    for(let j=0;j<3;j++){
+      ctx.save();ctx.translate(220+j*39,4140+j*35);ctx.rotate(-.64+j*.17);
+      rounded(-6,-85,12,172,3,['#dc7f69','#3d9580','#e7b760'][j]);
+      ctx.beginPath();ctx.moveTo(-6,-85);ctx.lineTo(0,-107);ctx.lineTo(6,-85);ctx.fillStyle='#eed9b4';ctx.fill();
+      ctx.restore();
+    }
+    // Handheld RC transmitter, complete with dual sticks and its own antenna.
+    ctx.save();ctx.translate(4820,4255);ctx.rotate(.12);
+    rounded(-126,-76,252,158,34,'#344c46','#213c39',8);
+    rounded(-110,-66,220,132,23,'#55796b','#94b5a3',5);
+    for(const tx of [-66,66]){
+      ctx.fillStyle='#243e3c';ctx.beginPath();ctx.arc(tx,-7,28,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#d6e2d4';ctx.beginPath();ctx.arc(tx+5,-11,11,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#fbcc87';ctx.font='bold 16px system-ui';ctx.textAlign='center';ctx.fillText('RC CONTROL',0,51);ctx.textAlign='left';
+    ctx.strokeStyle='#294642';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(10,-72);ctx.lineTo(32,-170);ctx.stroke();
+    ctx.fillStyle='#f09b68';ctx.beginPath();ctx.arc(32,-170,7,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // Ceramic coffee mug, over five times wider than the RC car.
+    ctx.save();ctx.translate(4225,270);ctx.fillStyle='#443c3570';
+    ctx.beginPath();ctx.arc(10,10,103,0,6.283);ctx.fill();
+    ctx.lineWidth=25;ctx.strokeStyle='#e7dbc5';ctx.beginPath();ctx.arc(102,5,38,-1.4,1.4);ctx.stroke();
+    ctx.fillStyle='#f2e8d9';ctx.beginPath();ctx.arc(0,0,99,0,6.283);ctx.fill();
+    ctx.fillStyle='#6e4b3a';ctx.beginPath();ctx.arc(0,0,75,0,6.283);ctx.fill();
+    ctx.fillStyle='#b88d70';ctx.beginPath();ctx.ellipse(-18,-13,40,17,-.36,0,6.283);ctx.fill();ctx.restore();
+  }
+  function drawArenaBase() {
+    rounded(ARENA.x + 27,ARENA.y + 35,ARENA.w,ARENA.h,56,'#3c342e73');
+    rounded(ARENA.x - 12,ARENA.y - 12,ARENA.w + 24,ARENA.h + 24,48,'#426960','#27453e',14);
+    rounded(ARENA.x,ARENA.y,ARENA.w,ARENA.h,39,'#dcefe0','#8fbcaf',8);
+    rounded(ARENA.x + ARENA.rail,ARENA.y + ARENA.rail,
+      ARENA.w - ARENA.rail*2,ARENA.h - ARENA.rail*2,11,'#dceee1');
+  }
+  function drawArenaRails() {
+    const a=ARENA, r=a.rail;
+    // Raised, impact-resistant continuous four-sided foam barrier.
+    ctx.save();ctx.strokeStyle='#284a42';ctx.lineWidth=18;
+    ctx.strokeRect(a.x+9,a.y+9,a.w-18,a.h-18);
+    ctx.strokeStyle='#f9e4b2';ctx.lineWidth=25;
+    ctx.strokeRect(a.x+23,a.y+23,a.w-46,a.h-46);
+    ctx.strokeStyle='#307967';ctx.lineWidth=10;
+    ctx.strokeRect(a.x+42,a.y+42,a.w-84,a.h-84);
+    // Small reflectors repeat around the complete rectangular boundary.
+    for(let x=a.x+100;x<a.x+a.w-55;x+=116){
+      rounded(x,a.y+11,32,13,3,'#f59b67');
+      rounded(x,a.y+a.h-24,32,13,3,'#f59b67');
+    }
+    for(let y=a.y+110;y<a.y+a.h-50;y+=116){
+      rounded(a.x+11,y,13,32,3,'#f59b67');
+      rounded(a.x+a.w-24,y,13,32,3,'#f59b67');
+    }
+    ctx.restore();
+    // Printed arena label, visible from desk overview near the top edge.
+    ctx.fillStyle='#204e47';ctx.textAlign='center';ctx.font='800 24px system-ui';
+    ctx.fillText('SATWIK RC RESEARCH CIRCUIT', a.x+a.w/2, a.y+29);
+    ctx.textAlign='left';
   }
   function drawRoads() {
+    const a=ARENA;
     const roads = [
-      { vertical: true, pos: 1430, width: 152 }, { vertical: true, pos: 2630, width: 152 },
-      { vertical: false, pos: 1270, width: 154 }, { vertical: false, pos: 2290, width: 154 }
+      { vertical: true, pos: a.x+1430, width: 152 }, { vertical: true, pos: a.x+2630, width: 152 },
+      { vertical: false, pos: a.y+1270, width: 154 }, { vertical: false, pos: a.y+2290, width: 154 }
     ];
+    // A continuous four-sided boundary road, inside the physical foam wall.
+    ctx.save();ctx.strokeStyle='#8eaeb7';ctx.lineWidth=142;
+    ctx.strokeRect(a.x+184,a.y+184,a.w-368,a.h-368);
+    ctx.strokeStyle='#fffbe0b8';ctx.lineWidth=4;ctx.setLineDash([32,36]);
+    ctx.strokeRect(a.x+184,a.y+184,a.w-368,a.h-368);
+    ctx.setLineDash([]);ctx.restore();
     for (const road of roads) {
-      const x = road.vertical ? road.pos - road.width / 2 : 0;
-      const y = road.vertical ? 0 : road.pos - road.width / 2;
-      const rw = road.vertical ? road.width : WORLD.width;
-      const rh = road.vertical ? WORLD.height : road.width;
+      const x = road.vertical ? road.pos - road.width / 2 : a.x;
+      const y = road.vertical ? a.y : road.pos - road.width / 2;
+      const rw = road.vertical ? road.width : a.w;
+      const rh = road.vertical ? a.h : road.width;
       rounded(x, y, rw, rh, 0, '#a1bcca', '#729aaa', 4);
       ctx.save(); ctx.strokeStyle = '#fffde2dc'; ctx.lineWidth = 3;
       ctx.setLineDash([28, 34]); ctx.beginPath();
-      if (road.vertical) { ctx.moveTo(road.pos, 0); ctx.lineTo(road.pos, WORLD.height); }
-      else { ctx.moveTo(0, road.pos); ctx.lineTo(WORLD.width, road.pos); }
+      if (road.vertical) { ctx.moveTo(road.pos, a.y); ctx.lineTo(road.pos, a.y+a.h); }
+      else { ctx.moveTo(a.x, road.pos); ctx.lineTo(a.x+a.w, road.pos); }
       ctx.stroke(); ctx.restore();
     }
     // Connecting streets visually guide the route between neighbourhoods.
-    ctx.save(); ctx.strokeStyle = '#84a4ae'; ctx.lineWidth = 18; ctx.setLineDash([3, 31]);
-    ctx.beginPath(); ctx.moveTo(700, 1270); ctx.lineTo(700, 2290);
-    ctx.moveTo(3300, 1270); ctx.lineTo(3300, 2290); ctx.stroke(); ctx.restore();
+    ctx.save();ctx.strokeStyle='#84a4ae';ctx.lineWidth=18;ctx.setLineDash([3,31]);
+    ctx.beginPath();ctx.moveTo(a.x+700,a.y+1270);ctx.lineTo(a.x+700,a.y+2290);
+    ctx.moveTo(a.x+3300,a.y+1270);ctx.lineTo(a.x+3300,a.y+2290);ctx.stroke();ctx.restore();
   }
   function drawTrees() {
     const size = 208;
@@ -233,10 +392,10 @@
     const top = Math.floor(camera.y / size) * size;
     for (let x = left; x < camera.x + w + size; x += size) {
       for (let y = top; y < camera.y + h + size; y += size) {
-        if (x < 70 || y < 70 || x > WORLD.width - 70 || y > WORLD.height - 70) continue;
+        if (x < ARENA.x + 76 || y < ARENA.y + 76 || x > ARENA.x + ARENA.w - 76 || y > ARENA.y + ARENA.h - 76) continue;
         const sx = x + Math.sin(x * 0.021 + y * .017) * 41, sy = y + Math.cos(x * .017 - y * .011) * 38;
         if (zones.some(z => sx > z.x - 34 && sx < z.x + z.w + 34 && sy > z.y - 34 && sy < z.y + z.h + 34)) continue;
-        if (Math.abs(sx - 1430) < 115 || Math.abs(sx - 2630) < 115 || Math.abs(sy - 1270) < 118 || Math.abs(sy - 2290) < 118) continue;
+        if (Math.abs(sx - (ARENA.x+1430)) < 115 || Math.abs(sx - (ARENA.x+2630)) < 115 || Math.abs(sy - (ARENA.y+1270)) < 118 || Math.abs(sy - (ARENA.y+2290)) < 118) continue;
         ctx.fillStyle = '#91c68a'; ctx.beginPath(); ctx.arc(sx, sy, 24, 0, 6.283); ctx.fill();
         ctx.fillStyle = '#5ca882'; ctx.beginPath(); ctx.arc(sx - 5, sy - 6, 16, 0, 6.283); ctx.fill();
         ctx.fillStyle = '#e5ffc5a0'; ctx.beginPath(); ctx.arc(sx + 9, sy - 8, 7, 0, 6.283); ctx.fill();
@@ -302,7 +461,7 @@
     }
   }
   function drawStartPlaza() {
-    const cx = 2010, cy = 1580;
+    const cx = ARENA.x + 2010, cy = ARENA.y + 1580;
     if (!rectVisible(cx - 290, cy - 290, 580, 580, 60)) return;
     ctx.beginPath(); ctx.arc(cx, cy, 280, 0, Math.PI * 2); ctx.fillStyle = '#fffcdeeb'; ctx.fill();
     ctx.beginPath(); ctx.arc(cx, cy, 229, 0, Math.PI * 2); ctx.strokeStyle = '#2f896da3'; ctx.lineWidth = 3; ctx.setLineDash([9, 20]); ctx.stroke(); ctx.setLineDash([]);
@@ -334,6 +493,12 @@
     rounded(-13, -36, 9, 5, 2, '#eafaad'); rounded(4, -36, 9, 5, 2, '#eafaad');
     rounded(-13, 31, 10, 4, 2, '#d75b55'); rounded(3, 31, 10, 4, 2, '#d75b55');
     ctx.strokeStyle = '#fff4d03c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-11, -1); ctx.lineTo(11, -1); ctx.stroke();
+    // Thin flexible RC whip at the rear: fixed to the car, no gameplay logic.
+    rounded(11, 24, 8, 8, 3, '#355d59', '#d4e6d6', 1);
+    ctx.beginPath(); ctx.moveTo(15, 29); ctx.quadraticCurveTo(27, 44, 23, 76);
+    ctx.lineWidth=3;ctx.strokeStyle='#334b4b';ctx.stroke();
+    ctx.beginPath();ctx.arc(23,76,4.5,0,Math.PI*2);ctx.fillStyle='#eb774d';ctx.fill();
+    ctx.beginPath();ctx.arc(23,76,2,0,Math.PI*2);ctx.fillStyle='#ffdbc0';ctx.fill();
     ctx.restore();
     if (started && Math.abs(car.speed) > 50 && !reduceMotion) {
       ctx.save();ctx.globalAlpha = .20;ctx.fillStyle = '#e6e9c0';ctx.beginPath();
@@ -350,6 +515,8 @@
       miniCtx.fillStyle = color(zone.tone, .8);
       miniCtx.fillRect(left + zone.x * sc, top + zone.y * sc, zone.w * sc, zone.h * sc);
     }
+    miniCtx.strokeStyle = '#2d6157';miniCtx.lineWidth = 1.6;
+    miniCtx.strokeRect(left + ARENA.x * sc, top + ARENA.y * sc, ARENA.w * sc, ARENA.h * sc);
     miniCtx.fillStyle = '#ffbb78';miniCtx.beginPath();miniCtx.arc(left + car.x * sc, top + car.y * sc, 4, 0, 6.283);miniCtx.fill();
     miniCtx.strokeStyle = '#2a655f';miniCtx.strokeRect(left + camera.x * sc, top + camera.y * sc, w * sc, h * sc);
   }
@@ -358,9 +525,30 @@
     update(dt, time);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    drawGround();drawMiniMap();
+    if (overview) {
+      ctx.save();
+      const ow=w, oh=h, ox=camera.x, oy=camera.y;
+      const sc=Math.min((ow-26)/WORLD.width,(oh-26)/WORLD.height);
+      ctx.translate((ow-WORLD.width*sc)/2,(oh-WORLD.height*sc)/2);
+      ctx.scale(sc,sc);
+      camera.x=0;camera.y=0;w=WORLD.width;h=WORLD.height;
+      drawGround();
+      w=ow;h=oh;camera.x=ox;camera.y=oy;
+      ctx.restore();
+    } else drawGround();
+    drawMiniMap();
     window.requestAnimationFrame(frame);
   }
+  deskToggle.addEventListener('click', () => {
+    overview = !overview;
+    car.speed = 0; keys.clear();
+    deskToggle.textContent = overview ? 'Return to driving' : 'View whole desk';
+    deskToggle.setAttribute('aria-pressed', String(overview));
+    deskToggle.classList.toggle('is-overview', overview);
+    document.getElementById('stage').classList.toggle('is-desk-overview', overview);
+    toast.textContent = overview ? 'Your research circuit, on a real desk. Return to driving to explore.' : 'Back in the RC driving arena.';
+    toast.classList.add('is-visible'); toastUntil = performance.now() + 2400;
+  });
   function begin() {
     started = true;
     app.inert = false;
@@ -425,5 +613,5 @@
   if (new URLSearchParams(window.location.search).get('start') === '1') begin();
   window.requestAnimationFrame(frame);
   // Expose read-only debugging snapshots for automated smoke testing; no gameplay dependency.
-  window.__resumeGameDebug = () => ({x: car.x, y: car.y, speed: car.speed, discoveries: picked.size, broken: blocks.filter(b => b.broken).map(b => b.id), camera: {...camera}, started});
+  window.__resumeGameDebug = () => ({x: car.x, y: car.y, speed: car.speed, discoveries: picked.size, broken: blocks.filter(b => b.broken).map(b => b.id), camera: {...camera}, arena: {...ARENA}, overview, started});
 })();

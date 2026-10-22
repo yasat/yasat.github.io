@@ -75,3 +75,13 @@
 .resume-page .resume-nav-links a:hover {text-decoration:underline;text-underline-offset:5px}
 @media(max-width:760px){.resume-page .resume-nav-links .back-drive {padding:9px 11px;font-size:11px}}
 @media(max-width:380px){.resume-page .brand-text small{display:none}}
+/* v3: text-first homepage with both independent game experiences. */
+.resume-page .resume-nav-links .back-city{background:#f4bc8e;border:1px solid #e5a678;border-radius:5px;padding:10px 13px;color:#193b33;white-space:nowrap}
+.resume-page .resume-nav-links .back-city:hover{background:#ffd9ae;text-decoration:none}
+.resume-page .resume-hero-actions a.city-hero-button{background:#f3b482;color:#1d4038;box-shadow:0 5px 0 #bc8055}
+.resume-page .resume-hero-actions a.city-hero-button:hover{background:#ffcb9b}
+.game-page .header-nav a[href^="city.html"]{color:#b3683a;font-weight:900}
+@media(max-width:760px){.resume-page .resume-nav-links .back-city{padding:9px 10px;font-size:11px}.resume-page .resume-nav{gap:8px}.resume-page .resume-nav-links{gap:7px}}
+@media(max-width:420px){.resume-page .resume-nav .brand-text small{display:none}.resume-page .resume-nav-links .back-drive,.resume-page .resume-nav-links .back-city{font-size:10px;padding:8px}}
+
+@media(max-width:760px){.resume-page .resume-nav-links a.back-city{display:inline-flex;align-items:center;justify-content:center}}

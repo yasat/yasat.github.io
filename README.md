@@ -1,56 +1,65 @@
-# Satwik Ghanta - Research Website and Driving Game
+# Satwik Ghanta - Text Resume and Two Driving Games
 
-A text-first academic website with an optional, playable, top-down driving experience based on the supplied Quarto website and draft academic CV. **No server, build step or external JavaScript dependency is required.**
+A static, GitHub Pages-ready academic portfolio with three separate ways to explore:
 
-## What is in this repository?
+- **Text website:** `site/index.html`. The default, accessible academic resume.
+- **2D driving game:** `site/game.html`. The original bright top-down car game with 32 breakable cards that respawn once offscreen.
+- **3D research city:** `site/city.html`. A new stylized perspective city with roads, junction signs, a follow-camera car and 32 roadside billboards.
 
-- `site/index.html`: default text-first research and resume homepage
-- `site/game.html`: optional driving experience linked in the header
-- `site/game.js` and `site/game-data.js`: driving physics, map, destructible resume blocks, respawning, and content
-- `site/styles.css`: visual design and responsive layout
-- `site/resume.html`: redirect from the old resume URL to the new homepage, preserving section fragments
-- `site/assets/`: SVG favicon
-- `original-quarto/`: unchanged backup of the previous Quarto source (not published by the deployment workflow)
-- `.github/workflows/deploy.yml`: publishes **only `site/`** using GitHub Actions
+All three use the same curated information, derived from the supplied draft academic CV. Publication-status qualifications are kept, and the unreviewed draft PDF is not published.
 
-## Try locally
+## The 3D city
+
+The map has **eight research and career districts** arranged around a central city plaza: Research, Publications, Teaching, Software Engineering, AI Innovation, Education, Academic Service and Contact. Each district has four billboards. Their short titles are painted on the signs; when you pull over and read one, a high-contrast panel shows its full description, status and any available source link.
+
+**Controls:**
+
+- `W` or Up arrow: accelerate
+- `S` or Down arrow: reverse
+- `A` and `D` or Left and Right arrows: steer
+- Space: brake
+- `E`: read the closest billboard when parked
+- On mobile, use LEFT, RIGHT, GO, REV and STOP.
+
+The destination panel on the right works as a map and as an alternative to driving: choose a district to jump there, or open any of its four billboard entries directly. On a phone, open the panel with the **City map** button.
+
+There are signs at all 16 intersections, a selected-destination waypoint panel with directions at junctions, and an on-screen car speed indicator. The city can automatically reveal a nearby billboard when the car has been driven and then parked. It also offers a manual Read billboard button.
+
+The 3D city uses a lightweight **software 3D perspective renderer** on the browser Canvas. It is intentionally stylized rather than a photorealistic WebGL scene. There are no third-party scripts, asset downloads or server components. The site is fully static and can be hosted free on GitHub Pages.
+
+## Local preview
+
+From the `site` directory:
 
 ```bash
-cd site
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000` in a browser for the text resume, then select **Play the game**. Use **WASD or arrow keys**. On a touchscreen, use the visible control pad. Drive through colourful resume blocks to reveal information. A broken block is rebuilt after it leaves the camera viewport. Visit a district directly using the left navigation.
+Then open `http://localhost:8000/` in a browser. The default homepage has **Play 2D** and **Explore 3D city** buttons in the header, with larger buttons in the hero. Select 3D city to begin exploring. You can also visit `http://localhost:8000/city.html` for a controls introduction or `http://localhost:8000/city.html?start=1` to begin immediately.
 
-## Deploy to `yasat.github.io`
+## Deploy on GitHub Pages
 
-1. Back up your existing GitHub repository before replacing its contents.
-2. Copy the contents of this repository into the **root** of your existing `yasat.github.io` repository. Remove the old top-level Quarto `publish.yml` workflow if it still exists - otherwise it may publish over this version.
-3. Commit and push to `main`.
-4. On GitHub: **Settings > Pages > Build and deployment > Source: GitHub Actions**.
-5. The included `Deploy static resume game` workflow publishes `site/`; the site appears at **https://yasat.github.io/** after deployment finishes.
+1. Back up the current contents of your `yasat.github.io` repository.
+2. Copy the extracted files, including `site/` and `.github/`, to the repository root.
+3. Remove or disable any old Quarto publication workflow. The included workflow deploys **only `site/`** to avoid overwriting this version.
+4. Commit and push to `main`.
+5. Under repository **Settings > Pages**, choose **GitHub Actions** as the deployment source.
 
-To use *Deploy from a branch* instead, move the contents of `site/` to the repository root and set Pages to `main` / `(root)`. Ensure `.nojekyll` exists in that publishing directory.
+When the workflow completes, the homepage is `https://yasat.github.io/`, the top-down game is at `/game.html`, and the 3D city is at `/city.html`.
 
-## Content notes - review before publishing
+You can instead publish the contents of `site/` from a branch if you prefer, as long as `.nojekyll` and all the website files are in the published root.
 
-The supplied 7-page CV is explicitly a **draft** and includes a number of unconfirmed details, placeholders and proposed work. The website uses a curated subset with appropriate status labels (published, accepted, preprint, student pilot, expected, etc.). The original draft PDF is **not** published and is **not** attached as a CV download. Check dates, statuses, links and affiliations before publishing. `site/game-data.js` is the easiest place to revise the in-game information; update `site/resume.html` for the matching text-only version.
+## Edit the content
 
-### Design and accessibility
+- Edit `site/game-data.js` to change the **shared district names, billboard titles, descriptions, publication statuses and links** used by both games.
+- Edit `site/index.html` for the normal text resume.
+- Edit `site/city.css` for the 3D interface colours and layout.
+- Edit `site/city.js` for street layout, car speed and physics, and sign behaviour.
+- Edit `site/styles.css` and `site/game.js` to adjust the top-down game.
+- The unchanged preexisting Quarto project is backed up in `original-quarto/`; it is not deployed.
 
-- Keyboard controls and mobile on-screen controls
-- Direct navigation to districts; the game is **never required** to read the resume
-- Descriptive semantic HTML fallback (`resume.html`), proper links, reduced-motion handling
-- No trackers or third-party libraries
-- The world runs entirely in the browser, so it works on GitHub Pages
+The original 7-page CV is an early draft and contains details needing confirmation. Review all published facts, dates and URLs before deployment. The game world uses the curated material from the previous website revision, not every line of the unpublished CV.
 
-## How the respawn works
+## Accessible routes
 
-Blocks have a `broken` state. A collision triggers a reveal and particles; while the block is within the visible canvas viewport it stays destroyed. As soon as that block's world-space rectangle moves outside the camera viewport (with a small padding), it is restored, so a later visit can break it again. Discoveries are counted only once per browser session.
-
-## Changes in v2
-
-- Default homepage is the text resume. The playable game lives at `/game.html` (with optional `?start=1` for instant play) and is linked prominently in the header and hero.
-- Game cards use descriptive paper topics rather than conference acronyms; the publication status and full paper titles remain in card detail text.
-- Game world and user interface are brighter and easier to scan.
-- Decorative Unicode arrows, stars, dashes, bullets and unusual typography were replaced with conventional plain text in the published site. Proper names retain their authentic accents.
+Visitors never have to play either game to read the resume. The 3D city has keyboard controls, touch controls, focusable district jump buttons, a separately accessible billboard list and descriptive, keyboard-reachable detail panels. The original 2D game remains intact.

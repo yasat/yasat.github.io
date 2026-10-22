@@ -118,3 +118,6 @@
 @media(prefers-reduced-motion:reduce){.city-sidebar{transition:none}}
 
 @media(max-width:800px){#cityJunctionNearby{display:none!important}.city-waypoint{padding-bottom:10px}}
+
+/* WebGL world is a separate transparent layer above the sky canvas. */
+#cityWorldGL{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;z-index:0}

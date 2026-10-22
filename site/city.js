@@ -255,11 +255,19 @@
       const horizontal=b.side==='south'||b.side==='north';
       if(horizontal) {
         for(const dx of [-24,24])addBox(solids,b.x+dx,.65,b.z,2.6,21,2.6,'#43625c');
-        addBox(solids,b.x,19,b.z,60,36,2.6,'#325a53');
+        // Open rectangular frame. The textured print IS the sign surface;
+        // a solid backing quad previously covered its lettering in Canvas2D.
+        addBox(solids,b.x,19,b.z,60,3,2.8,'#325a53');
+        addBox(solids,b.x,52,b.z,60,3,2.8,'#325a53');
+        addBox(solids,b.x-29.5,21,b.z,2.8,31,2.8,'#325a53');
+        addBox(solids,b.x+29.5,21,b.z,2.8,31,2.8,'#325a53');
         fixedPropFootprints.push({minX:b.x-30,maxX:b.x+30,minZ:b.z-2,maxZ:b.z+2});
       } else {
         for(const dz of [-24,24])addBox(solids,b.x,.65,b.z+dz,2.6,21,2.6,'#43625c');
-        addBox(solids,b.x,19,b.z,2.6,36,60,'#325a53');
+        addBox(solids,b.x,19,b.z,2.8,3,60,'#325a53');
+        addBox(solids,b.x,52,b.z,2.8,3,60,'#325a53');
+        addBox(solids,b.x,21,b.z-29.5,2.8,31,2.8,'#325a53');
+        addBox(solids,b.x,21,b.z+29.5,2.8,31,2.8,'#325a53');
         fixedPropFootprints.push({minX:b.x-2,maxX:b.x+2,minZ:b.z-30,maxZ:b.z+30});
       }
     }
@@ -287,8 +295,23 @@
     const c=state.car, fx=Math.sin(c.yaw),fz=Math.cos(c.yaw);
     // Keep the camera inside the building wall even on the perimeter loop.
     // Aim toward the car and the next stretch of road, not through a facade.
-    const px=clamp(c.x-fx*95,-664,664),py=58,
-          pz=clamp(c.z-fz*95,-664,664);
+    // Use the requested 95/58/.50 chase-camera preset. Move the eye forward
+    // only when a building or a permanent roadside billboard would otherwise
+    // end up BETWEEN the car and the camera (preventing a giant sign filling
+    // the entire screen). The sign itself never moves.
+    let chaseDistance=95;
+    const cameraBlocked=(x,z)=>{
+      const radius=5;
+      return buildingFootprints.some(b=>x>b.minX-radius&&x<b.maxX+radius&&z>b.minZ-radius&&z<b.maxZ+radius)||
+        fixedPropFootprints.some(b=>x>b.minX-radius&&x<b.maxX+radius&&z>b.minZ-radius&&z<b.maxZ+radius);
+    };
+    for(let step=22;step<=95;step+=4){
+      if(cameraBlocked(c.x-fx*step,c.z-fz*step)){
+        chaseDistance=Math.max(20,step-10);break;
+      }
+    }
+    const px=clamp(c.x-fx*chaseDistance,-664,664),py=58,
+          pz=clamp(c.z-fz*chaseDistance,-664,664);
     const followGap=Math.max(32,(c.x-px)*fx+(c.z-pz)*fz);
     const ahead=followGap*.50;
     let dx=c.x+fx*ahead-px,dy=-58,dz=c.z+fz*ahead-pz;
@@ -432,42 +455,99 @@
   // Render a texture on a real, fixed vertical plane in world space, not a
   // camera-facing sprite. A two-triangle affine projection maintains the
   // orientation and readability of the printed sign from either approach.
-  function drawTexturedTriangle(tex,source,pts) {
-    const t=source.map(i=>[[0,0],[tex.width,0],[tex.width,tex.height],[0,tex.height]][i]);
-    const p=source.map(i=>pts[i]);
-    const [u0,v0]=t[0], [u1,v1]=t[1], [u2,v2]=t[2];
-    const [p0,p1,p2]=p;
+  // Fallback: map an exact print or ground image crop to a triangle. The
+  // triangles are small enough to keep affine and true perspective almost equal.
+  function drawPrintTriangle(tex,src,dst) {
+    const [t0,t1,t2]=src,[p0,p1,p2]=dst;
+    const [u0,v0]=t0,[u1,v1]=t1,[u2,v2]=t2;
     const det=(u1-u0)*(v2-v0)-(u2-u0)*(v1-v0);
-    if(Math.abs(det)<.00001)return;
+    if(Math.abs(det)<1e-5)return;
     const a=((p1.x-p0.x)*(v2-v0)-(p2.x-p0.x)*(v1-v0))/det;
     const c=((p2.x-p0.x)*(u1-u0)-(p1.x-p0.x)*(u2-u0))/det;
     const b=((p1.y-p0.y)*(v2-v0)-(p2.y-p0.y)*(v1-v0))/det;
     const d=((p2.y-p0.y)*(u1-u0)-(p1.y-p0.y)*(u2-u0))/det;
     const e=p0.x-a*u0-c*v0,f=p0.y-b*u0-d*v0;
-    ctx.save();ctx.beginPath();ctx.moveTo(p0.x,p0.y);
-    ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.clip();
-    ctx.transform(a,b,c,d,e,f);ctx.drawImage(tex,0,0);ctx.restore();
+    // Drawing a cropped portion avoids wasting time resampling the whole atlas
+    // for each tile in the fallback renderer.
+    const sx=Math.max(0,Math.floor(Math.min(u0,u1,u2))-2);
+    const sy=Math.max(0,Math.floor(Math.min(v0,v1,v2))-2);
+    const ex=Math.min(tex.width,Math.ceil(Math.max(u0,u1,u2))+2);
+    const ey=Math.min(tex.height,Math.ceil(Math.max(v0,v1,v2))+2);
+    if(ex<=sx||ey<=sy)return;
+    // Overlap clip boundaries by a fraction of a screen pixel, avoiding the
+    // diagonal hairline seams caused by Canvas2D's per-triangle antialiasing.
+    const cx=(p0.x+p1.x+p2.x)/3,cy=(p0.y+p1.y+p2.y)/3;
+    const padded=[p0,p1,p2].map(p=>{
+      const l=Math.hypot(p.x-cx,p.y-cy)||1;
+      return {x:p.x+(p.x-cx)*.75/l,y:p.y+(p.y-cy)*.75/l};
+    });
+    ctx.save();ctx.beginPath();ctx.moveTo(padded[0].x,padded[0].y);
+    ctx.lineTo(padded[1].x,padded[1].y);ctx.lineTo(padded[2].x,padded[2].y);ctx.closePath();ctx.clip();
+    ctx.transform(a,b,c,d,e,f);
+    ctx.drawImage(tex,sx,sy,ex-sx,ey-sy,sx,sy,ex-sx,ey-sy);
+    ctx.restore();
+  }
+  // Clip an arbitrary world-space textured polygon against the camera's near
+  // plane, interpolating its printed UVs so it does not pop out when approached.
+  function clipPrinted(poly){
+    const raw=poly.map(v=>{
+      const a=view(v);return [a[0],a[1],a[2],v[3],v[4]];
+    });
+    const near=4,clip=[];
+    for(let i=0;i<raw.length;i++){
+      const p=raw[i],q=raw[(i+1)%raw.length],pin=p[2]>near,qin=q[2]>near;
+      if(pin)clip.push(p);
+      if(pin!==qin){
+        const t=(near-p[2])/(q[2]-p[2]);
+        clip.push(p.map((n,j)=>n+(q[j]-n)*t));
+      }
+    }
+    if(clip.length<3)return [];
+    return clip.map(v=>({x:W*.5+v[0]*scale/v[2],y:H*.5-v[1]*scale/v[2],z:v[2],u:v[3],v:v[4]}));
+  }
+  function texturedPatch(tex,polygon){
+    const pt=clipPrinted(polygon);
+    if(pt.length<3)return;
+    if(pt.every(p=>p.x<-8)||pt.every(p=>p.x>W+8)||pt.every(p=>p.y<-8)||pt.every(p=>p.y>H+8))return;
+    const depth=pt.reduce((s,p)=>s+p.z,0)/pt.length;
+    const patch={depth,draw:()=>{
+      for(let i=1;i<pt.length-1;i++){
+        const v=[pt[0],pt[i],pt[i+1]];
+        drawPrintTriangle(tex,v.map(p=>[p.u,p.v]),v);
+      }
+    }};
+    faces.push(patch);
   }
   function staticPanel(x,y,z,w,h,rx,rz,nx,nz,texture,range=650) {
     if(distance(x,z,cam.x,cam.z)>range)return;
-    const facing=(cam.x-x)*nx+(cam.z-z)*nz;
-    if(facing<=1)return; // the physical back panel remains visible in the world
-    const half=w/2;
-    const corners=[
-      [x-rx*half+nx*2.5,y+h,z-rz*half+nz*2.5],
-      [x+rx*half+nx*2.5,y+h,z+rz*half+nz*2.5],
-      [x+rx*half+nx*2.5,y,z+rz*half+nz*2.5],
-      [x-rx*half+nx*2.5,y,z-rz*half+nz*2.5]
-    ];
-    const projected=corners.map(pointScreen);
-    if(projected.some(p=>!p))return;
-    const xs=projected.map(p=>p.x),ys=projected.map(p=>p.y);
-    if(Math.max(...xs)<-20||Math.min(...xs)>W+20||Math.max(...ys)<-20||Math.min(...ys)>H+20)return;
-    const depth=projected.reduce((sum,p)=>sum+p.z,0)/projected.length;
-    faces.push({depth:depth-.4,draw:()=>{
-      drawTexturedTriangle(texture,[0,1,2],projected);
-      drawTexturedTriangle(texture,[0,2,3],projected);
-    }});
+    const front=(cam.x-x)*nx+(cam.z-z)*nz>=0;
+    // Print once on each face of the physical board. Both are readable.
+    const side=front?1:-1,ux=rx*side,uz=rz*side,ox=nx*side*1.72,oz=nz*side*1.72;
+    const across=9,down=5;
+    for(let row=0;row<down;row++)for(let col=0;col<across;col++){
+      const corners=[];
+      for(const [a,b] of [[col,row],[col+1,row],[col+1,row+1],[col,row+1]]){
+        const u=a/across,v=b/down;
+        corners.push([x+ux*(u-.5)*w+ox,y+h*(1-v),z+uz*(u-.5)*w+oz,u*texture.width,v*texture.height]);
+      }
+      texturedPatch(texture,corners);
+    }
+  }
+  function drawContinuousGroundFallback(){
+    // Split the continuous atlas into non-overlapping 80-unit world tiles.
+    // Each tile is clipped at the near plane and painted in perspective.
+    const step=95,tex=continuousGround;
+    for(let x=-WORLD_LIMIT;x<WORLD_LIMIT;x+=step)for(let z=-WORLD_LIMIT;z<WORLD_LIMIT;z+=step){
+      const nx=Math.min(x+step,WORLD_LIMIT),nz=Math.min(z+step,WORLD_LIMIT);
+      const midx=(x+nx)*.5,midz=(z+nz)*.5;
+      if(distance(midx,midz,cam.x,cam.z)>790)continue;
+      const v=view([midx,.05,midz]);
+      if(v[2]<-step*1.2||v[2]>900||Math.abs(v[0])>Math.max(0,v[2])*W/(2*scale)+step*1.6)continue;
+      const px=t=>(t+WORLD_LIMIT)/(WORLD_LIMIT*2)*tex.width;
+      const pz=t=>(WORLD_LIMIT-t)/(WORLD_LIMIT*2)*tex.height;
+      texturedPatch(tex,[[x,.05,z,px(x),pz(z)],[nx,.05,z,px(nx),pz(z)],
+          [nx,.05,nz,px(nx),pz(nz)],[x,.05,nz,px(x),pz(nz)]]);
+    }
   }
   function drawBillboards() {
     for(const b of items){
@@ -484,6 +564,198 @@
       staticPanel(board.x,board.y,board.z,board.w,board.h,-dx,-dz,-dz,dx,board.texture,430);
     }
   }
+
+  // A single baked map is shared by WebGL and the Canvas fallback. The road,
+  // grass, pedestrian paths and intersection paint are no longer separate
+  // overlapping 3D polygons, so they never compete for rendering order.
+  function makeContinuousGround() {
+    const art=document.createElement('canvas');art.width=2560;art.height=2560;
+    const paint=art.getContext('2d',{alpha:false});
+    const span=WORLD_LIMIT*2;
+    const xPx=x=>(x+WORLD_LIMIT)/span*art.width;
+    const zPx=z=>(WORLD_LIMIT-z)/span*art.height;
+    paint.fillStyle='#b5d6b9';paint.fillRect(0,0,art.width,art.height);
+    for(const face of ground){
+      paint.beginPath();face.verts.forEach((p,i)=>i?paint.lineTo(xPx(p[0]),zPx(p[2])):paint.moveTo(xPx(p[0]),zPx(p[2])));
+      paint.closePath();paint.fillStyle=face.color;paint.fill();
+    }
+    return art;
+  }
+  const continuousGround=makeContinuousGround();
+
+  // Version 6: perspective-correct, depth-tested WebGL city renderer.
+  // World geometry is static. Only the car and camera change when driving.
+  // The entire street surface is rasterized once into ONE continuous texture:
+  // there are no overlapping coplanar road rectangles to flicker or show holes.
+  // Sign lettering is permanently baked into static world-space textures.
+  function createWebGLScene() {
+    const glCanvas=document.createElement('canvas');
+    glCanvas.id='cityWorldGL';
+    glCanvas.setAttribute('aria-hidden','true');
+    canvas.after(glCanvas);
+    const options={alpha:true,depth:true,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:false};
+    let gl=glCanvas.getContext('webgl2',options);
+    const isWebGL2=!!gl;
+    if(!gl)gl=glCanvas.getContext('webgl',options);
+    if(!gl){glCanvas.remove();return null;}
+    const vertex=`${isWebGL2?'#version 300 es\n':''}
+      precision highp float;
+      ${isWebGL2?'in':'attribute'} vec3 a_position;
+      ${isWebGL2?'in':'attribute'} vec4 a_color;
+      ${isWebGL2?'in':'attribute'} vec2 a_uv;
+      uniform vec3 u_eye,u_right,u_up,u_forward;
+      uniform vec2 u_screen;
+      ${isWebGL2?'out':'varying'} vec4 v_color;
+      ${isWebGL2?'out':'varying'} vec2 v_uv;
+      void main(){
+        vec3 p=a_position-u_eye;
+        float x=dot(p,u_right),y=dot(p,u_up),z=dot(p,u_forward);
+        float near=2.0,far=2400.0;
+        gl_Position=vec4(x*u_screen.x,y*u_screen.y,z*(far+near)/(far-near)-(2.0*far*near)/(far-near),z);
+        v_color=a_color;
+        v_uv=a_uv;
+      }`;
+    const fragment=`${isWebGL2?'#version 300 es\n':''}
+      precision mediump float;
+      ${isWebGL2?'in':'varying'} vec4 v_color;
+      ${isWebGL2?'in':'varying'} vec2 v_uv;
+      uniform sampler2D u_image;
+      uniform bool u_textured;
+      ${isWebGL2?'out vec4 outColor;':''}
+      void main(){${isWebGL2?'outColor':'gl_FragColor'}=u_textured?${isWebGL2?'texture':'texture2D'}(u_image,v_uv):v_color;}`;
+    const shader=(type,source)=>{
+      const sh=gl.createShader(type);gl.shaderSource(sh,source);gl.compileShader(sh);
+      if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));
+      return sh;
+    };
+    const prog=gl.createProgram();
+    gl.attachShader(prog,shader(gl.VERTEX_SHADER,vertex));
+    gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    const attr={p:gl.getAttribLocation(prog,'a_position'),c:gl.getAttribLocation(prog,'a_color'),t:gl.getAttribLocation(prog,'a_uv')};
+    const uni={eye:gl.getUniformLocation(prog,'u_eye'),right:gl.getUniformLocation(prog,'u_right'),up:gl.getUniformLocation(prog,'u_up'),front:gl.getUniformLocation(prog,'u_forward'),screen:gl.getUniformLocation(prog,'u_screen'),textured:gl.getUniformLocation(prog,'u_textured')};
+    const rgb=(hex)=>{const n=parseInt(hex.slice(1),16);return [(n>>16)/255,((n>>8)&255)/255,(n&255)/255,1];};
+    // 9 floats per vertex: XYZ + RGBA + UV. All polygons are triangles.
+    const vertexData=(faces)=>{
+      const out=[];
+      for(const face of faces){
+        const c=rgb(face.color),v=face.verts;
+        for(let i=1;i<v.length-1;i++)for(const j of [0,i,i+1])out.push(...v[j],...c,0,0);
+      }
+      return new Float32Array(out);
+    };
+    const makeBuffer=(data,usage=gl.STATIC_DRAW)=>{
+      const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,usage);
+      return {buffer,count:data.length/9};
+    };
+    const bind=(mesh)=>{
+      gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);
+      const stride=9*4;
+      gl.enableVertexAttribArray(attr.p);gl.vertexAttribPointer(attr.p,3,gl.FLOAT,false,stride,0);
+      gl.enableVertexAttribArray(attr.c);gl.vertexAttribPointer(attr.c,4,gl.FLOAT,false,stride,3*4);
+      gl.enableVertexAttribArray(attr.t);gl.vertexAttribPointer(attr.t,2,gl.FLOAT,false,stride,7*4);
+    };
+    const uploadTexture=(source)=>{
+      const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);
+      // WebGL 1 requires non-power-of-two textures without mipmaps.
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,isWebGL2?gl.LINEAR_MIPMAP_LINEAR:gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      if(isWebGL2)gl.generateMipmap(gl.TEXTURE_2D);
+      return tex;
+    };
+    const groundTexture=uploadTexture(continuousGround);
+    const groundVerts=new Float32Array([
+      -WORLD_LIMIT,0,-WORLD_LIMIT,1,1,1,1,0,0,
+      WORLD_LIMIT,0,-WORLD_LIMIT,1,1,1,1,1,0,
+      WORLD_LIMIT,0,WORLD_LIMIT,1,1,1,1,1,1,
+      -WORLD_LIMIT,0,-WORLD_LIMIT,1,1,1,1,0,0,
+      WORLD_LIMIT,0,WORLD_LIMIT,1,1,1,1,1,1,
+      -WORLD_LIMIT,0,WORLD_LIMIT,1,1,1,1,0,1
+    ]);
+    const groundMesh=makeBuffer(groundVerts);
+    const solidMesh=makeBuffer(vertexData(solids));
+    const carBuffer=gl.createBuffer();
+    const signs=[];
+    // Text on both sides is right-reading. There is no camera-facing sprite,
+    // no frame-by-frame text layout and no orientation tracking.
+    const addPrintedFace=(x,y,z,w,h,rx,rz,nx,nz,texture,offset=1.7)=>{
+      const hw=w*.5,verts=[];
+      const corners=[
+        [x-rx*hw+nx*offset,y+h,z-rz*hw+nz*offset,0,1],
+        [x+rx*hw+nx*offset,y+h,z+rz*hw+nz*offset,1,1],
+        [x+rx*hw+nx*offset,y,z+rz*hw+nz*offset,1,0],
+        [x-rx*hw+nx*offset,y,z-rz*hw+nz*offset,0,0]
+      ];
+      for(const i of [0,1,2,0,2,3]){
+        const pt=corners[i];verts.push(pt[0],pt[1],pt[2],1,1,1,1,pt[3],pt[4]);
+      }
+      signs.push({x,z,mesh:makeBuffer(new Float32Array(verts)),texture});
+    };
+    for(const b of items){
+      const normals={south:[0,-1],north:[0,1],east:[1,0],west:[-1,0]};
+      const [nx,nz]=normals[b.side];
+      const texture=uploadTexture(billboardTextures.get(b.index));
+      addPrintedFace(b.x,21,b.z,55.5,31.5,-nz,nx,nx,nz,texture);
+      addPrintedFace(b.x,21,b.z,55.5,31.5,nz,-nx,-nx,-nz,texture);
+    }
+    for(const sign of directionBoards){
+      const {dx,dz}=sign,texture=uploadTexture(sign.texture);
+      // Sign brackets are 2.2 units thick, so both prints are just beyond the frame.
+      addPrintedFace(sign.x,sign.y+.2,sign.z,sign.w-1,sign.h-1,dx,dz,dz,-dx,texture,1.4);
+      addPrintedFace(sign.x,sign.y+.2,sign.z,sign.w-1,sign.h-1,-dx,-dz,-dz,dx,texture,1.4);
+    }
+    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+    gl.disable(gl.CULL_FACE);gl.disable(gl.BLEND);
+    const draw=(mesh,texture=null)=>{
+      gl.uniform1i(uni.textured,!!texture);
+      if(texture)gl.bindTexture(gl.TEXTURE_2D,texture);
+      bind(mesh);gl.drawArrays(gl.TRIANGLES,0,mesh.count);
+    };
+    const renderGL=()=>{
+      const ww=Math.round(W*dpr),hh=Math.round(H*dpr);
+      if(glCanvas.width!==ww||glCanvas.height!==hh){glCanvas.width=ww;glCanvas.height=hh;}
+      gl.viewport(0,0,glCanvas.width,glCanvas.height);
+      gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(prog);
+      gl.uniform3f(uni.eye,cam.x,cam.y,cam.z);
+      gl.uniform3f(uni.right,cam.rx,0,cam.rz);
+      gl.uniform3f(uni.up,cam.ux,cam.uy,cam.uz);
+      gl.uniform3f(uni.front,cam.fx,cam.fy,cam.fz);
+      gl.uniform2f(uni.screen,2*scale/W,2*scale/H);
+      // One continuous flat ground. Depth test handles all building/window
+      // occlusion, even at oblique angles and intersections.
+      draw(groundMesh,groundTexture);
+      draw(solidMesh);
+      // Frustum distance check only changes whether an object is rendered;
+      // the artwork, location and rotation always stay fixed.
+      for(const s of signs)if(Math.abs(s.x-cam.x)<720&&Math.abs(s.z-cam.z)<720)draw(s.mesh,s.texture);
+      const f=[];
+      const c=state.car,bx=c.x,bz=c.z;
+      const put=(side,forward,y,w,h,d,color)=>{
+        const x=bx+side*Math.cos(c.yaw)+forward*Math.sin(c.yaw);
+        const z=bz-side*Math.sin(c.yaw)+forward*Math.cos(c.yaw);
+        addBox(f,x,y,z,w,h,d,color,c.yaw);
+      };
+      put(0,0,3,17,7,32,'#ef865a');put(0,-4,10,14,7,19,'#eaa780');
+      put(0,2,11,14.3,3,10,'#376777');put(0,-10,8,14,3,5,'#376777');
+      put(0,15.5,3,18,2,2,'#eccab0');put(0,-16,4,18,2,2,'#45636b');
+      for(const side of [-9.5,9.5])for(const forward of [-10.5,10.5])put(side,forward,1.5,3.3,6.5,7.5,'#23343d');
+      for(const side of [-5.7,5.7]){put(side,15.8,6,3.2,1.6,1.4,'#fff5cd');put(side,-15.8,6,3.2,1.6,1.4,'#b73f40');}
+      const data=vertexData(f);
+      gl.bindBuffer(gl.ARRAY_BUFFER,carBuffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);
+      draw({buffer:carBuffer,count:data.length/9});
+    };
+    // Keep a diagnostic so the user can confirm WebGL is active.
+    return {render:renderGL,signCount:signs.length,ground:'single continuous textured plane',type:isWebGL2?'WebGL2 depth tested':'WebGL1 depth tested'};
+  }
+  let webglScene=null;
+  try{webglScene=createWebGLScene();}catch(err){console.warn('WebGL renderer unavailable, using Canvas2D fallback:',err);}
+
   function addCar() {
     const c=state.car,f=[],bx=c.x,bz=c.z;
     const put=(side,forward,y,w,h,d,color)=>{
@@ -509,18 +781,28 @@
   }
   function render() {
     cam=camera();faces=[];
+    if(webglScene){
+      // The original 2D canvas supplies only the sky and green horizon.
+      // The transparent WebGL layer renders all world geometry with a depth buffer.
+      const sky=ctx.createLinearGradient(0,0,0,H*.76);
+      sky.addColorStop(0,'#acdded');sky.addColorStop(.55,'#dff5f1');sky.addColorStop(1,'#eff4cb');
+      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#b5d6b9';ctx.fillRect(0,H*.42,W,H*.58);
+      webglScene.render();return;
+    }
     const sky=ctx.createLinearGradient(0,0,0,H*.76);
     sky.addColorStop(0,'#acdded');sky.addColorStop(.55,'#dff5f1');sky.addColorStop(1,'#eff4cb');
     ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
     // Light and horizon frame.
     ctx.fillStyle='#fff4bfbb';ctx.beginPath();ctx.arc(W*.66,H*.14,Math.min(60,H*.07),0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#b8ddbb';ctx.fillRect(0,H*.42,W,H*.58);
-    // Ground draws before buildings, which avoids near ground cards masking facades.
+    // Ground is ONE continuous raster rather than hundreds of overlapping
+    // road planes. Depth-sorted tiles are joined without z-fighting.
     const g=[];
     const original=faces;faces=g;
-    ground.forEach(renderFace);
+    drawContinuousGroundFallback();
     g.sort((a,b)=>b.depth-a.depth);
-    for(const f of g) drawFace(f);
+    for(const f of g)drawFace(f);
     faces=original;
     solids.forEach(renderFace);
     drawBillboards();addCar();
@@ -782,5 +1064,5 @@
   });
   if(new URLSearchParams(location.search).get('start')==='1')start();
   // Exposed for manual testing of driving, detail, and accessible district selection.
-  window.__cityDebug=()=>({car:{...state.car},target:cityZones[state.target].name,nearest:state.nearest?.title||null,discovered:state.discovered.size,active:state.active,detail:state.detail?.title||null,buildingCount:buildingFootprints.length,closedBoundary:WORLD_LIMIT,staticBillboards:billboardTextures.size,staticFourWaySigns:directionBoards.length});
+  window.__cityDebug=()=>({car:{...state.car},target:cityZones[state.target].name,nearest:state.nearest?.title||null,discovered:state.discovered.size,active:state.active,detail:state.detail?.title||null,buildingCount:buildingFootprints.length,closedBoundary:WORLD_LIMIT,staticBillboards:billboardTextures.size,staticFourWaySigns:directionBoards.length,renderer:webglScene?.type||'Canvas2D fallback',ground:webglScene?.ground||'continuous ground texture (Canvas2D)'});
 })();

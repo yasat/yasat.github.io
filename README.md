@@ -1,4 +1,4 @@
-# Satwik Ghanta - portfolio, 2D drive and 3D research city (Version 5)
+# Satwik Ghanta - portfolio, 2D drive and 3D research city (Version 6)
 
 A static GitHub Pages-ready academic portfolio with three separate ways to explore:
 
@@ -6,7 +6,7 @@ A static GitHub Pages-ready academic portfolio with three separate ways to explo
 - **2D game** (`site/game.html`): the bright top-down driving game with breakable resume cards.
 - **3D city** (`site/city.html`): a stylized perspective city with a continuous outer ring road, solid building boundaries, fixed direction signs, and readable stationary information billboards.
 
-This update changes the 3D city only. The text resume and 2D game are retained from Version 4. Content is shared between both games in `site/game-data.js`.
+This update changes the 3D city only. The text resume and 2D game remain unchanged. Content is shared between both games in `site/game-data.js`.
 
 ## Version 5 improvements
 
@@ -69,4 +69,13 @@ The included `.github/workflows/deploy.yml` publishes the contents of `site/`. T
 - Edit city size, world objects, collisions, signs, 3D projections and driving rules in `site/city.js`.
 - Edit colours and page layout in `site/city.css` and `site/styles.css`.
 
-The 3D renderer is a lightweight, low-poly Canvas 2D perspective engine. It is not a photorealistic, GTA-style WebGL engine. This is intentional to preserve fast deployment and broad browser support. Always check the research details and publication statuses before publicly publishing an updated resume.
+The 3D city is a low-poly game, not a photorealistic GTA-level world. The preferred renderer is built-in WebGL2 or WebGL1, with a Canvas2D fallback. No external JavaScript library is required. Always check research details and publication statuses before publishing.
+
+
+## Version 6 rendering fixes
+
+The 3D city now uses built-in WebGL2 or WebGL1 when available (no dependencies). The entire road, pavement and grass layer is baked into a single continuous ground texture, eliminating overlapped-road flicker and holes. Billboards are static, perspective-correct world surfaces with identical printed content on both readable sides; the letters are never animated or rotated toward the driver. Proper depth testing keeps them behind buildings. The requested closer chase camera uses distance 95, height 58, and look-ahead 0.50. When its line of sight would pass through a building or fixed sign, the camera moves closer to the car temporarily; the sign never moves. A Canvas2D fallback with the same continuous ground artwork remains for browsers without WebGL. Modern browsers with WebGL have real depth testing and perspective-correct print surfaces.
+
+### Changing your camera
+
+Open `site/city.js`, find `function camera()`, and edit `chaseDistance=95`, `py=58`, `followGap*.50`, and `dy=-58`. Keep the y values equal in both places, and be aware that the nearby-object avoidance may shorten the requested distance temporarily. Billboard text artwork is created once in `createBillboardArt()` and physically mapped to both sides in `createWebGLScene()`; it does not animate. The ground comes from `makeContinuousGround()`, which combines all road and pavement paint into a single texture.

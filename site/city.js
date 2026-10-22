@@ -29,7 +29,7 @@
     return { ...item, ...positions[j],zone,index:zone.index*4+j,num:zone.index*4+j+1 };
   }));
   const state = {
-    car:{x:-200,z:-720,yaw:0,speed:0},
+    car:{x:-200,z:-380,yaw:0,speed:0},
     target:0, active:false, paused:true, detail:null,
     discovered:new Set(), key:{}, nearest:null, nearbyIntersection:null,
     last:0, parking:0, ridden:false, lastOpened:-1, drag:false
@@ -45,7 +45,10 @@
   const rand = n => Math.abs(hash(n));
   const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
   const distance = (a,b,c,d) => Math.hypot(a-c,b-d);
-  const ground = [], solids = [], signposts = [];
+  const ground = [], solids = [], signposts = [], buildingFootprints = [], fixedPropFootprints = [];
+  const WORLD_LIMIT = 795;
+  const ROAD_END = 600;
+  const billboardTextures = new Map();
   function quad(collection, v, color, stroke=null) {
     const n=v.length;
     collection.push({verts:v,color,stroke,
@@ -85,6 +88,9 @@
     plane(ground,x,z,7,7,.6,'#a9bdb5');
   }
   function building(x,z,w,d,h,color,index) {
+    // The footprint is the same geometry used to render the building, so
+    // collision walls always line up with the visible facades.
+    buildingFootprints.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});
     const id=index+Math.round(x*7+z*3), glass=['#84c3c6','#7eb1b8','#bedce0','#99c7c9'];
     plane(ground,x+4,z+4,w+15,d+15,.56,'#b0b9b0');
     addBox(solids,x,.75,z,w,h,d,color);
@@ -129,41 +135,54 @@
   }
   function makeWorld() {
     const asphalt='#465a65', curbs='#b7bcb6';
-    // Roadbed, pavements, verge and markings are grounded at different heights.
+    // Every street ends on the perimeter loop at +/-600. No asphalt spurs
+    // extend outside the closed playable square into the building wall.
     for (const v of roadCoords) {
-      // Short segments avoid losing entire roads to camera distance culling.
-      for(let pos=-825;pos<850;pos+=110) {
-        plane(ground,v,pos,106,110,.03,curbs);
-        plane(ground,pos,v,110,106,.04,curbs);
-        plane(ground,v,pos,96,110,.1,asphalt);
-        plane(ground,pos,v,110,96,.11,asphalt);
+      for(let pos=-ROAD_END; pos<ROAD_END; pos+=100) {
+        const len=Math.min(100,ROAD_END-pos),mid=pos+len/2;
+        plane(ground,v,mid,106,len,.03,curbs);
+        plane(ground,mid,v,len,106,.04,curbs);
+        plane(ground,v,mid,96,len,.1,asphalt);
+        plane(ground,mid,v,len,96,.11,asphalt);
         for(const side of [-1,1]) {
-          plane(ground,v+side*49,pos,2.4,110,.28,'#f0e8d4');
-          plane(ground,pos,v+side*49,110,2.4,.29,'#f0e8d4');
+          plane(ground,v+side*49,mid,2.4,len,.28,'#f0e8d4');
+          plane(ground,mid,v+side*49,len,2.4,.29,'#f0e8d4');
         }
       }
-      for(let pos=-825;pos<850;pos+=50) {
+      for(let pos=-ROAD_END+24;pos<ROAD_END-24;pos+=50) {
         if(roadCoords.some(j=>Math.abs(pos-j)<70))continue;
         plane(ground,v,pos,2,23,.35,'#ead9ab');
         plane(ground,pos,v,23,2,.36,'#ead9ab');
       }
     }
+    // A fixed, highly visible road edge. The four +/-600 streets connect
+    // around the city and allow driving a complete lap in either direction.
+    for(const edge of [-600,600]) {
+      for(let p=-565;p<=565;p+=30) {
+        if(roadCoords.some(v=>Math.abs(p-v)<69))continue;
+        plane(ground,edge,p,2,16,.37,'#ffedc7');
+        plane(ground,p,edge,16,2,.38,'#ffedc7');
+      }
+    }
     // Crosswalks end at road edges and signs are placed on corner pavements.
     for(const x of roadCoords) for(const z of roadCoords) {
       for(let q=-33;q<=33;q+=11) {
-        plane(ground,x+q,z+57,5.6,13,.4,'#f5f1e7');
-        plane(ground,x+q,z-57,5.6,13,.4,'#f5f1e7');
-        plane(ground,x+57,z+q,13,5.6,.4,'#f5f1e7');
-        plane(ground,x-57,z+q,13,5.6,.4,'#f5f1e7');
+        // No zebra crossings into buildings at the outer edges.
+        if(z<600)plane(ground,x+q,z+57,5.6,13,.4,'#f5f1e7');
+        if(z>-600)plane(ground,x+q,z-57,5.6,13,.4,'#f5f1e7');
+        if(x<600)plane(ground,x+57,z+q,13,5.6,.4,'#f5f1e7');
+        if(x>-600)plane(ground,x-57,z+q,13,5.6,.4,'#f5f1e7');
       }
       plane(ground,x,z,8,8,.27,'#50656e');
-      const near=cityZones.filter(a=>Math.abs(a.cx-x)<255&&Math.abs(a.cz-z)<255);
-      const sx=x+74,sz=z+74;
-      signposts.push({x:sx,z:sz,nearby:near});
+      // Junction signboards use fixed world coordinates, cardinal directions,
+      // and fixed destination labels. Nothing rotates or follows the camera.
+      // Keep signs on the city-facing pavement even at the outer edges.
+      const sx=x+(x===600?-82:82),sz=z+(z===600?-82:82);
+      signposts.push({x:sx,z:sz,crossX:x,crossZ:z});
+      fixedPropFootprints.push({minX:sx-2,maxX:sx+2,minZ:sz-2,maxZ:sz+2});
       plane(ground,sx,sz,16,16,.47,'#d6dbd2');
-      addBox(solids,sx,0,sz,2.6,27,2.6,'#365d58');
-      addBox(solids,sx,24,sz,38,13,3,'#205a57');
-      addBox(solids,sx,37,sz,40,2.2,4,'#ebb06c');
+      addBox(solids,sx,0,sz,3.2,61,3.2,'#365d58');
+      addBox(solids,sx,61,sz,6.3,2.8,6.3,'#f5c484');
       lamp(x-66,z-66);
     }
     const palettes=['#b9cec9','#dab49c','#aaa8c5','#9fbbcd','#c8a6a3','#bcc8a2','#d7bc96','#a6cfbf'];
@@ -198,35 +217,57 @@
         // Town square in the centre replaces the previous undetailed cubes.
         plane(ground,x,z,200,200,.56,'#d8dfcf');
         plane(ground,x,z,126,126,.61,'#b7d8c7');
+        buildingFootprints.push({minX:x-27,maxX:x+27,minZ:z-27,maxZ:z+27});
         addBox(solids,x,1,z,54,12,54,'#629f91');
         addBox(solids,x,13,z,43,15,43,'#bddbd3');
         addBox(solids,x,29,z,13,25,13,'#386d66');
         for(let t=0;t<8;t++){const a=t*Math.PI/4;tree(x+Math.cos(a)*116,z+Math.sin(a)*116,t);}
       }
     }
-    // Outer neighbourhoods prevent blank fields along the playable perimeter.
-    // Centres at +/-800 lie beyond the boundary roads but remain visible to drivers.
-    for(const gx of [-800,-400,0,400,800]) for(const gz of [-800,-400,0,400,800]) {
-      if(Math.abs(gx)<600 && Math.abs(gz)<600)continue;
-      plane(ground,gx,gz,292,292,.38,'#cedacb');
-      plane(ground,gx,gz,279,279,.44,'#e5ded2');
-      plane(ground,gx,gz,265,265,.49,'#bbd9c0');
-      for(const [k,[ox,oz]] of [[-73,-72],[74,-67],[-69,70],[72,76]].entries()) {
-        const tint=['#adbbb0','#c4b4a5','#a4bcc0','#dfba9d','#adbd9e'][(Math.abs(gx+gz)+k)%5];
-        building(gx+ox,gz+oz,50+rand(k+gx)*15,52+rand(k+gz)*12,
-          52+rand(k+gx+gz)*85,tint,116+(gx+800)/400*5+(gz+800)/400+k);
+    // One continuous architectural wall encloses the city outside the
+    // perimeter road. Each building touches or overlaps its neighbours, with
+    // no drivable holes at corners. Buildings remain collidable and detailed.
+    const boundaryPalettes=['#a9bec4','#c5b2a1','#bdd1bc','#b2b7c7','#c8b79f','#aabeb2'];
+    for(const side of [-1,1]) {
+      for(let k=-8;k<=8;k++) {
+        const along=k*88;
+        const seed=(side+2)*100+k+20;
+        const base=boundaryPalettes[(Math.abs(k)+ (side===1?2:0))%boundaryPalettes.length];
+        const height=66+rand(seed*3)*75;
+        // Wall-facing facades begin around 692, safely behind the sidewalk
+        // beyond the road edge (648).
+        building(side*742,along,104,90,height,base,300+seed);
+        building(along,side*742,90,104,65+rand(seed*5)*90,
+          boundaryPalettes[(Math.abs(k)+3+(side===1?1:0))%boundaryPalettes.length],600+seed);
+      }
+      for(const other of [-1,1]) {
+        building(side*743,other*743,96,96,96+rand(side*5+other)*42,
+          '#a8c6bc',850+side*3+other);
       }
     }
-    // Distant blocks remain recognisable as skyscrapers with patterned windows.
-    for(let i=0;i<22;i++) {
-      const theta=i*Math.PI/11,x=Math.cos(theta)*1020,z=Math.sin(theta)*1020;
-      building(x,z,48+rand(i)*25,45+rand(i+6)*27,55+rand(i+19)*110,i%3?'#b2c5bc':'#c9b9a6',i+90);
+    // Inset pedestrian strips run between outer building fronts and the loop.
+    for (const side of [-1,1]) {
+      plane(ground,side*666,0,31,1300,.48,'#deddd3');
+      plane(ground,0,side*666,1300,31,.49,'#deddd3');
     }
-    // All 32 billboard frames and legs live entirely inside their block boundary.
+    // Permanent billboard panels, posts and frames stay in world coordinates.
     for(const b of items) {
-      const flat=b.side==='south'||b.side==='north';
-      if(flat)for(const dx of [-22,22])addBox(solids,b.x+dx,.65,b.z,2.6,17,2.6,'#43625c');
-      else for(const dz of [-22,22])addBox(solids,b.x,.65,b.z+dz,2.6,17,2.6,'#43625c');
+      const horizontal=b.side==='south'||b.side==='north';
+      if(horizontal) {
+        for(const dx of [-24,24])addBox(solids,b.x+dx,.65,b.z,2.6,21,2.6,'#43625c');
+        addBox(solids,b.x,19,b.z,60,36,2.6,'#325a53');
+        fixedPropFootprints.push({minX:b.x-30,maxX:b.x+30,minZ:b.z-2,maxZ:b.z+2});
+      } else {
+        for(const dz of [-24,24])addBox(solids,b.x,.65,b.z+dz,2.6,21,2.6,'#43625c');
+        addBox(solids,b.x,19,b.z,2.6,36,60,'#325a53');
+        fixedPropFootprints.push({minX:b.x-2,maxX:b.x+2,minZ:b.z-30,maxZ:b.z+30});
+      }
+    }
+    // Fixed four-way pointer brackets, physically aligned to cardinal axes.
+    for(const sign of signposts)for(const [i,[dx,dz]] of [[0,1],[1,0],[0,-1],[-1,0]].entries()) {
+      const sx=sign.x+dx*16,sz=sign.z+dz*16,y=34+i*7.8;
+      if(dx)addBox(solids,sx,y,sz,32,6.8,2.2,'#20584f');
+      else addBox(solids,sx,y,sz,2.2,6.8,32,'#20584f');
     }
   }
   makeWorld();
@@ -244,9 +285,13 @@
 
   function camera() {
     const c=state.car, fx=Math.sin(c.yaw),fz=Math.cos(c.yaw);
-    // Raised third-person camera maintains enough view for a useful city map.
-    const px=c.x-fx*208,py=119,pz=c.z-fz*208;
-    let dx=fx*310,dy=-114,dz=fz*310;
+    // Keep the camera inside the building wall even on the perimeter loop.
+    // Aim toward the car and the next stretch of road, not through a facade.
+    const px=clamp(c.x-fx*185,-664,664),py=139,
+          pz=clamp(c.z-fz*185,-664,664);
+    const followGap=Math.max(32,(c.x-px)*fx+(c.z-pz)*fz);
+    const ahead=followGap*.66;
+    let dx=c.x+fx*ahead-px,dy=-139,dz=c.z+fz*ahead-pz;
     const len=Math.hypot(dx,dy,dz);dx/=len;dy/=len;dz/=len;
     const horizontal=Math.hypot(dx,dz);
     const rx=dz/horizontal,rz=-dx/horizontal,ux=dy*rz,uy=horizontal,uz=-dy*rx;
@@ -312,87 +357,132 @@
     const clean=str.replace(/\s+/g,' ').trim();
     return clean.length>180?clean.slice(0,176).replace(/\s+\S*$/,'')+'...':clean;
   }
-  function addBillboard(b) {
-    if(distance(b.x,b.z,cam.x,cam.z)>590)return;
-    const rx=cam.rx,rz=cam.rz;
-    const top=pointScreen([b.x,47,b.z]);
-    const bottom=pointScreen([b.x,18,b.z]);
-    const left=pointScreen([b.x-rx*23.5,24,b.z-rz*23.5]);
-    const right=pointScreen([b.x+rx*23.5,24,b.z+rz*23.5]);
-    const center=pointScreen([b.x,30,b.z]);
-    if(!top||!bottom||!left||!right||!center)return;
-    const w=Math.abs(right.x-left.x),h=Math.abs(bottom.y-top.y);
-    if(w<47||h<30)return;
-    faces.push({depth:center.z-1,draw:()=>{
-      const x=center.x, y=top.y;
-      if(x< -w/2||x>W+w/2)return;
-      const t=clamp(w/18,8,15);
-      // One projected sign face keeps the cream panel intact at any camera angle.
-      ctx.save();ctx.fillStyle='#315e57';
-      ctx.beginPath();ctx.roundRect(x-w*.5-4,y-4,w+8,h+8,3);ctx.fill();
-      ctx.fillStyle='#fffaf0';ctx.fillRect(x-w*.5,y,w,h);
-      ctx.fillStyle='#24655c';ctx.fillRect(x-w*.5,y,w,h*.20);
-      ctx.fillStyle=b.zone.tone;ctx.fillRect(x-w*.5,y+h*.94,w,h*.06);
-      ctx.restore();
-      ctx.save();ctx.textAlign='left';ctx.textBaseline='top';
-      const pad=w*.085,l=x-w*.5+pad,inner=w-pad*2;
-      ctx.fillStyle='#f6fff5';ctx.font=`800 ${clamp(t*.62,7,10)}px Arial, sans-serif`;
-      if(h>38)ctx.fillText(`${String(b.num).padStart(2,'0')}  ${b.zone.short.toUpperCase()}`,l,y+Math.max(3,h*.065),inner);
-      ctx.fillStyle='#163b35';
-      const titleFont=`800 ${t}px Arial, sans-serif`;
-      const lines=textLines(b.title,inner,2,titleFont);
-      ctx.font=titleFont;let ty=y+h*.26;
-      for(const line of lines){ctx.fillText(line,l,ty,inner);ty+=t*1.15;}
-      const metaFont=clamp(t*.62,7.5,10);
-      if(h>66) {
-        ctx.fillStyle='#427566';ctx.font=`800 ${metaFont}px Arial, sans-serif`;
-        ctx.fillText(b.meta.slice(0,45),l,Math.max(ty+3,y+h*.53),inner);
-      }
-      if(h>88){
-        ctx.fillStyle='#425b52';const fs=clamp(t*.62,7,10);
-        const descLines=textLines(excerpt(b.description),inner,3,`500 ${fs}px Arial, sans-serif`);
-        ctx.font=`500 ${fs}px Arial, sans-serif`;
-        descLines.forEach((line,i)=>ctx.fillText(line,l,y+h*.67+i*fs*1.18,inner));
-      }
-      if(h>105){ctx.fillStyle='#2b7568';ctx.font='800 8px Arial, sans-serif';ctx.fillText('PARK NEARBY TO READ MORE',l,y+h*.88,inner);}
-      ctx.restore();
+  // These canvases are generated once, like printed billboard artwork.
+  // Their text cannot face or move with the camera during driving.
+  function makePrintedCanvas(width,height,paint) {
+    const c=document.createElement('canvas');c.width=width;c.height=height;
+    paint(c.getContext('2d'),width,height);return c;
+  }
+  function wrapPrinted(g,value,maxWidth,maxLines,lineHeight,atX,atY) {
+    const words=String(value).split(/\s+/);let lines=[],line='';
+    for(const word of words) {
+      const trial=line?line+' '+word:word;
+      if(line&&g.measureText(trial).width>maxWidth) {lines.push(line);line=word;}else line=trial;
+    }
+    if(line)lines.push(line);
+    if(lines.length>maxLines){lines=lines.slice(0,maxLines);lines[maxLines-1]=lines[maxLines-1].replace(/[ .,;:]*$/,'')+'...';}
+    lines.forEach((txt,i)=>g.fillText(txt,atX,atY+i*lineHeight,maxWidth));
+    return lines.length;
+  }
+  function createBillboardArt(b) {
+    return makePrintedCanvas(720,430,(g,w,h)=>{
+      g.fillStyle='#fff9ee';g.fillRect(0,0,w,h);
+      g.fillStyle='#215e56';g.fillRect(0,0,w,76);
+      g.fillStyle='#fff9ee';g.font='bold 25px Arial';
+      g.fillText(`${String(b.num).padStart(2,'0')}   ${b.zone.short.toUpperCase()}`,32,48,660);
+      g.textBaseline='top';
+      g.fillStyle='#163f38';g.font='bold 44px Arial';
+      const n=wrapPrinted(g,b.title,660,2,51,32,96);
+      const next=96+n*51+13;
+      g.fillStyle='#347263';g.font='bold 22px Arial';
+      g.fillText(String(b.meta).slice(0,110),32,next,660);
+      g.fillStyle='#3b5650';g.font='24px Arial';
+      wrapPrinted(g,excerpt(b.description),655,4,32,32,next+42);
+      g.fillStyle=b.zone.tone;g.fillRect(0,h-19,w,19);
+      g.fillStyle='#215e56';g.font='bold 17px Arial';
+      g.fillText('PARK AND PRESS E FOR FULL DETAILS',32,h-45,660);
+    });
+  }
+  function createDirectionArt(dir,label) {
+    return makePrintedCanvas(620,140,(g,w,h)=>{
+      g.fillStyle='#20584f';g.fillRect(0,0,w,h);
+      g.fillStyle='#f1b87d';g.fillRect(0,0,114,h);
+      g.fillStyle='#183f36';g.font='bold 82px Arial';g.textAlign='center';
+      g.fillText(dir,57,102);
+      g.fillStyle='#fffbed';g.textAlign='left';g.font='bold 40px Arial';
+      g.fillText(label.toUpperCase(),132,90,455);
+      g.fillStyle='#a6ddd1';g.fillRect(130,108,430,4);
+    });
+  }
+  function cardinalDestination(x,z,dir) {
+    const vec={N:[0,1],E:[1,0],S:[0,-1],W:[-1,0]}[dir];
+    if((vec[0]&&x*vec[0]>=600)||(vec[1]&&z*vec[1]>=600))return 'CITY LIMIT';
+    const candidates=cityZones.filter(q=>((q.cx-x)*vec[0]+(q.cz-z)*vec[1])>60);
+    if(!candidates.length)return 'CENTRAL PLAZA';
+    candidates.sort((a,b)=>{
+      const v=q=>Math.abs((q.cx-x)*vec[1]-(q.cz-z)*vec[0])*.95 +
+        Math.abs((q.cx-x)*vec[0]+(q.cz-z)*vec[1])*.6;
+      return v(a)-v(b);
+    });
+    return candidates[0].short;
+  }
+  const directionBoards=[];
+  for(const s of signposts) {
+    for(const [i,[name,dx,dz]] of [['N',0,1],['E',1,0],['S',0,-1],['W',-1,0]].entries()) {
+      const destination=cardinalDestination(s.crossX,s.crossZ,name);
+      directionBoards.push({
+        x:s.x+dx*16,z:s.z+dz*16,
+        y:34+i*7.8,w:30,h:6.5,dir:name,dx,dz,
+        texture:createDirectionArt(name,destination)
+      });
+    }
+  }
+  for(const b of items)billboardTextures.set(b.index,createBillboardArt(b));
+
+  // Render a texture on a real, fixed vertical plane in world space, not a
+  // camera-facing sprite. A two-triangle affine projection maintains the
+  // orientation and readability of the printed sign from either approach.
+  function drawTexturedTriangle(tex,source,pts) {
+    const t=source.map(i=>[[0,0],[tex.width,0],[tex.width,tex.height],[0,tex.height]][i]);
+    const p=source.map(i=>pts[i]);
+    const [u0,v0]=t[0], [u1,v1]=t[1], [u2,v2]=t[2];
+    const [p0,p1,p2]=p;
+    const det=(u1-u0)*(v2-v0)-(u2-u0)*(v1-v0);
+    if(Math.abs(det)<.00001)return;
+    const a=((p1.x-p0.x)*(v2-v0)-(p2.x-p0.x)*(v1-v0))/det;
+    const c=((p2.x-p0.x)*(u1-u0)-(p1.x-p0.x)*(u2-u0))/det;
+    const b=((p1.y-p0.y)*(v2-v0)-(p2.y-p0.y)*(v1-v0))/det;
+    const d=((p2.y-p0.y)*(u1-u0)-(p1.y-p0.y)*(u2-u0))/det;
+    const e=p0.x-a*u0-c*v0,f=p0.y-b*u0-d*v0;
+    ctx.save();ctx.beginPath();ctx.moveTo(p0.x,p0.y);
+    ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.clip();
+    ctx.transform(a,b,c,d,e,f);ctx.drawImage(tex,0,0);ctx.restore();
+  }
+  function staticPanel(x,y,z,w,h,rx,rz,nx,nz,texture,range=650) {
+    if(distance(x,z,cam.x,cam.z)>range)return;
+    const facing=(cam.x-x)*nx+(cam.z-z)*nz;
+    if(facing<=1)return; // the physical back panel remains visible in the world
+    const half=w/2;
+    const corners=[
+      [x-rx*half+nx*2.5,y+h,z-rz*half+nz*2.5],
+      [x+rx*half+nx*2.5,y+h,z+rz*half+nz*2.5],
+      [x+rx*half+nx*2.5,y,z+rz*half+nz*2.5],
+      [x-rx*half+nx*2.5,y,z-rz*half+nz*2.5]
+    ];
+    const projected=corners.map(pointScreen);
+    if(projected.some(p=>!p))return;
+    const xs=projected.map(p=>p.x),ys=projected.map(p=>p.y);
+    if(Math.max(...xs)<-20||Math.min(...xs)>W+20||Math.max(...ys)<-20||Math.min(...ys)>H+20)return;
+    const depth=projected.reduce((sum,p)=>sum+p.z,0)/projected.length;
+    faces.push({depth:depth-.4,draw:()=>{
+      drawTexturedTriangle(texture,[0,1,2],projected);
+      drawTexturedTriangle(texture,[0,2,3],projected);
     }});
   }
-  function quadDynamic(v,color) {renderFace({verts:v,color});}
-  function addLabels() {
-    signposts.forEach(s=>{
-      if(distance(s.x,s.z,cam.x,cam.z)>420)return;
-      const p=pointScreen([s.x,31,s.z]);
-      if(!p||p.z<20)return;
-      const left=pointScreen([s.x-18,31,s.z]);const right=pointScreen([s.x+18,31,s.z]);
-      if(!left||!right)return;
-      const w=Math.abs(right.x-left.x);
-      if(w<30||w>440)return;
-      faces.push({depth:p.z-2,draw:()=>{
-        ctx.save();ctx.fillStyle='#fffbed';ctx.textAlign='center';
-        ctx.font=`900 ${clamp(w/8,8,12)}px Arial, sans-serif`;
-        ctx.fillText('DISTRICTS',p.x,p.y-5);
-        const adjacent=s.nearby.slice(0,2).map(z=>{
-          const dx=z.cx-(s.x-74),dz=z.cz-(s.z-74);
-          const heading=Math.abs(dx)>Math.abs(dz)?(dx>0?'E':'W'):(dz>0?'N':'S');
-          return `${heading}  ${z.short.toUpperCase()}`;
-        });
-        ctx.font=`800 ${clamp(w/11,6.5,9)}px Arial, sans-serif`;
-        for(let i=0;i<adjacent.length;i++)ctx.fillText(adjacent[i],p.x,p.y+7+i*10,Math.max(20,w*.87));
-        ctx.restore();
-      }});
-    });
-    cityZones.forEach(z=>{
-      if(distance(z.cx,z.cz,cam.x,cam.z)>630)return;
-      const p=pointScreen([z.cx,150,z.cz]);
-      if(p&&p.z>170&&p.z<560){faces.push({depth:p.z-1,draw:()=>{
-        ctx.save();ctx.textAlign='center';ctx.font='800 10px Arial, sans-serif';
-        const txt=z.short.toUpperCase(),tw=ctx.measureText(txt).width+22;
-        ctx.fillStyle='#fffaf0ed';ctx.strokeStyle='#a7c8b9';ctx.lineWidth=1;
-        ctx.beginPath();ctx.roundRect(p.x-tw/2,p.y-16,tw,23,6);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#235848';ctx.fillText(txt,p.x,p.y-1);ctx.restore();
-      }});}
-    });
+  function drawBillboards() {
+    for(const b of items){
+      // Each board faces its nearest road for the lifetime of the page.
+      const normal={south:[0,-1],north:[0,1],east:[1,0],west:[-1,0]}[b.side];
+      const [nx,nz]=normal;
+      staticPanel(b.x,19,b.z,57,33,-nz,nx,nx,nz,billboardTextures.get(b.index));
+    }
+    for(const board of directionBoards) {
+      const {dx,dz}=board;
+      // Each of the four fixed arrows has a textured front and rear. Neither
+      // the printed text nor its direction changes when the car turns.
+      staticPanel(board.x,board.y,board.z,board.w,board.h,dx,dz,dz,-dx,board.texture,430);
+      staticPanel(board.x,board.y,board.z,board.w,board.h,-dx,-dz,-dz,dx,board.texture,430);
+    }
   }
   function addCar() {
     const c=state.car,f=[],bx=c.x,bz=c.z;
@@ -433,8 +523,7 @@
     for(const f of g) drawFace(f);
     faces=original;
     solids.forEach(renderFace);
-    items.forEach(addBillboard);
-    addLabels();addCar();
+    drawBillboards();addCar();
     faces.sort((a,b)=>b.depth-a.depth);
     for(const f of faces)drawFace(f);
     // Subtle atmospheric distance fades the world into the soft afternoon sky.
@@ -579,6 +668,9 @@
     const c=mapCtx, mw=map.width,mh=map.height;
     c.clearRect(0,0,mw,mh);c.fillStyle='#e3efe3';c.fillRect(0,0,mw,mh);
     const project=(x,z)=>[27+(x+800)/1600*246,15+(800-z)/1600*194];
+    // Enclosing buildings make the outermost four roads a true closed loop.
+    c.strokeStyle='#7b9c96';c.lineWidth=9;
+    c.strokeRect(...project(-752,752),231,183);
     // Miniature road grid shows true relative neighbourhood locations.
     roadCoords.forEach(v=>{
       let a=project(v,-790),b=project(v,790);
@@ -613,14 +705,27 @@
       c.yaw+=(right?rotate:-rotate)*(c.speed<0?-1:1);
     }
     if(Math.abs(c.speed)>1)state.ridden=true;
-    const nx=clamp(c.x+Math.sin(c.yaw)*c.speed*dt,-811,811);
-    const nz=clamp(c.z+Math.cos(c.yaw)*c.speed*dt,-811,811);
-    // Buildings are solid. Sidewalks and streets remain driveable near signs.
-    const solid = cityZones.some(z=> {
-      const dx=Math.abs(nx-z.cx),dz=Math.abs(nz-z.cz);
-      return (dx<104&&dz<104) || (dx<118&&dz<116 && (dx>35&&dz>35));
-    }) || (Math.abs(nx)<39&&Math.abs(nz)<39);
-    if(solid){c.speed*=-.28;}else{c.x=nx;c.z=nz;}
+    const nx=c.x+Math.sin(c.yaw)*c.speed*dt;
+    const nz=c.z+Math.cos(c.yaw)*c.speed*dt;
+    // The collision footprint follows actual 3D building positions, rather
+    // than blocking invisible squares. All edge buildings are impassable.
+    // OBB versus AABB collision: respect the car's actual length when nose-on
+    // to a wall, and its width when sliding sideways, including while turning.
+    const rx=Math.cos(c.yaw),rz=-Math.sin(c.yaw),fx=Math.sin(c.yaw),fz=Math.cos(c.yaw);
+    const hw=9.2,hl=17.7;
+    const carExtentX=Math.abs(rx)*hw+Math.abs(fx)*hl;
+    const carExtentZ=Math.abs(rz)*hw+Math.abs(fz)*hl;
+    const hits=(b)=>{
+      const hx=(b.maxX-b.minX)/2+1,hz=(b.maxZ-b.minZ)/2+1;
+      const tx=nx-(b.minX+b.maxX)/2,tz=nz-(b.minZ+b.maxZ)/2;
+      if(Math.abs(tx)>hx+carExtentX||Math.abs(tz)>hz+carExtentZ)return false;
+      if(Math.abs(tx*rx+tz*rz)>hw+hx*Math.abs(rx)+hz*Math.abs(rz))return false;
+      if(Math.abs(tx*fx+tz*fz)>hl+hx*Math.abs(fx)+hz*Math.abs(fz))return false;
+      return true;
+    };
+    const solid=Math.abs(nx)>WORLD_LIMIT-carExtentX||Math.abs(nz)>WORLD_LIMIT-carExtentZ||
+      buildingFootprints.some(hits)||fixedPropFootprints.some(hits);
+    if(solid){c.speed*=-.20;}else{c.x=nx;c.z=nz;}
     $('citySpeed').textContent=String(Math.round(Math.abs(c.speed)*.72)).padStart(2,'0');
     if(!state.detail){
       const {billboard,dist}=getClosestBillboard();
@@ -654,7 +759,7 @@
   $('cityDetailContinue').addEventListener('click',closeBillboard);
   $('cityMenuButton').addEventListener('click',()=>toggleMap());
   $('citySidebarClose').addEventListener('click',()=>toggleMap(false));
-  $('cityReset').addEventListener('click',()=>{state.car={x:-200,z:-720,yaw:0,speed:0};state.parking=0;state.ridden=false;});
+  $('cityReset').addEventListener('click',()=>{state.car={x:-200,z:-380,yaw:0,speed:0};state.parking=0;state.ridden=false;});
   $('cityDetail').addEventListener('click',e=>{if(e.target===$('cityDetail'))closeBillboard();});
   const known=['w','W','s','S','a','A','d','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','e','E','m','M','Escape'];
   document.addEventListener('keydown',e=>{
@@ -677,5 +782,5 @@
   });
   if(new URLSearchParams(location.search).get('start')==='1')start();
   // Exposed for manual testing of driving, detail, and accessible district selection.
-  window.__cityDebug=()=>({car:{...state.car},target:cityZones[state.target].name,nearest:state.nearest?.title||null,discovered:state.discovered.size,active:state.active,detail:state.detail?.title||null});
+  window.__cityDebug=()=>({car:{...state.car},target:cityZones[state.target].name,nearest:state.nearest?.title||null,discovered:state.discovered.size,active:state.active,detail:state.detail?.title||null,buildingCount:buildingFootprints.length,closedBoundary:WORLD_LIMIT,staticBillboards:billboardTextures.size,staticFourWaySigns:directionBoards.length});
 })();

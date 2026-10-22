@@ -1,66 +1,72 @@
-# Satwik Ghanta - Portfolio, 2D Drive and Research City 3D (Version 4)
+# Satwik Ghanta - portfolio, 2D drive and 3D research city (Version 5)
 
-A static, GitHub Pages-ready academic portfolio with three separate ways to explore:
+A static GitHub Pages-ready academic portfolio with three separate ways to explore:
 
-- **Text website:** `site/index.html`. The default, accessible academic resume.
-- **2D driving game:** `site/game.html`. The original bright top-down car game with 32 breakable cards that respawn once offscreen.
-- **3D research city:** `site/city.html`. A redesigned stylized perspective city with a correctly scaled car, building facades with windows, shops and rooftops, pedestrian-only billboards, road signs and a compact live map.
+- **Text resume** (`site/index.html`): the default, accessible academic portfolio.
+- **2D game** (`site/game.html`): the bright top-down driving game with breakable resume cards.
+- **3D city** (`site/city.html`): a stylized perspective city with a continuous outer ring road, solid building boundaries, fixed direction signs, and readable stationary information billboards.
 
-All three use the same curated information, derived from the supplied draft academic CV. Publication-status qualifications are kept, and the unreviewed draft PDF is not published.
+This update changes the 3D city only. The text resume and 2D game are retained from Version 4. Content is shared between both games in `site/game-data.js`.
 
-## The 3D city
+## Version 5 improvements
 
-The map has **eight research and career districts** arranged around a central city plaza: Research, Publications, Teaching, Software Engineering, AI Innovation, Education, Academic Service and Contact. Each district has four billboards. The signs show a paper or project title, publication or project status, and a short description. Stop close to a billboard and select Read billboard (or press E) to view its complete text and source link. Billboard structures are placed inside the pavements of district blocks, not across driving lanes.
+### 1. Fully enclosed city with a perimeter road
 
-**Controls:**
+The four outer roads at `x = -600`, `x = 600`, `z = -600` and `z = 600` join into a continuous drivable ring around all eight districts and the central plaza. Roads no longer continue out of the city into empty space.
 
-- `W` or Up arrow: accelerate
-- `S` or Down arrow: reverse
-- `A` and `D` or Left and Right arrows: steer
+Beyond that road loop, a continuous row of **72 detailed perimeter buildings**, including the four corners, encloses the whole map. The enclosure is dense and has no drivable gaps. There are **112 collidable buildings in total**. The car checks collision against the actual rectangular building footprints, not invisible district-sized blocks. The outer map boundary is a further safety limit. Billboards and signposts also prevent the car from driving through their supports.
+
+Buildings retain coloured facades, window grids, entrances, awnings and rooftop details. The camera adjusts near the perimeter so it does not pass through the boundary buildings.
+
+### 2. Fixed billboards with fixed printed text
+
+All **32 billboards** are anchored to specific pavements inside the research blocks. Each faces the nearest road. The frame, supports, and pre-rendered text do not turn to face the car. The sign shows a district and number, a meaningful paper or project title, its status or dates, and a short description. The full information remains accessible by parking, pressing `E`, or selecting the item from the map.
+
+Physical signs naturally grow or shrink in perspective as you approach or leave them. Their actual positions, orientation and print do not change.
+
+### 3. Four fixed directional pointers per intersection
+
+There are **16 intersections**, each with **four physical direction signs**: N, E, S and W, for a total of 64 static pointers. Their text is calculated once when the city loads, rather than following the driver or updating each frame. At the city edges, outward-facing pointers say CITY LIMIT to warn that the map does not continue beyond the perimeter. The optional destination panel is still allowed to give live driving guidance; it does not alter the street signs.
+
+The pointer supports are on the pavement beyond the lane markings, and outermost zebra crossings no longer point outside the road network.
+
+## Controls
+
+- W or Up arrow: accelerate
+- S or Down arrow: reverse
+- A and D or Left and Right arrows: steer
 - Space: brake
-- `E`: read the closest billboard when parked
-- `M`: open or close the city map
-- On mobile, use LEFT, RIGHT, GO, REV and STOP.
+- E: read the closest billboard while parked
+- M: open or close the optional district map
+- Mobile: LEFT, RIGHT, GO, REV and STOP on-screen controls
 
-The large field-guide map now starts CLOSED, leaving the 3D game visible. The smaller desktop minimap remains in the bottom-right corner. Open **City map** in the header (or press M) to jump to a district or read its four billboards directly. On mobile, the map opens as a drawer.
-
-There are signs at all 16 intersections, a selected-destination waypoint panel with directions at junctions, and an on-screen car speed indicator. The car, camera, and billboard sizes have been adjusted relative to the street layout. Buildings now have window grids, entrances, awnings, roof equipment, lamp posts, planted verges and surrounding city blocks rather than blank cubes. The city can automatically reveal a nearby billboard when the car has been driven and then parked. It also offers a manual Read billboard button.
-
-The 3D city uses a lightweight **software 3D perspective renderer** on the browser Canvas. It is an expanded low-poly city rather than a photorealistic GTA-style production game. It does not use Rockstar assets or include complex traffic simulation, pedestrians, or realistic vehicle physics. There are no third-party scripts, asset downloads or server components. The site is fully static and can be hosted free on GitHub Pages.
+A text-based list of billboards is available in the city guide for visitors who prefer to navigate without driving.
 
 ## Local preview
 
-From the `site` directory:
+Run this from the `site` directory:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000/` in a browser. The default homepage has **Play 2D** and **Explore 3D city** buttons in the header, with larger buttons in the hero. Select 3D city to begin exploring. You can also visit `http://localhost:8000/city.html` for a controls introduction or `http://localhost:8000/city.html?start=1` to begin immediately.
+Then open `http://localhost:8000/` for the text resume, `http://localhost:8000/game.html` for the 2D game or `http://localhost:8000/city.html` for the 3D city. Add `?start=1` to the game URLs to skip the instructions.
 
-## Deploy on GitHub Pages
+## Deploy to GitHub Pages
 
 1. Back up the current contents of your `yasat.github.io` repository.
-2. Copy the extracted files, including `site/` and `.github/`, to the repository root.
-3. Remove or disable any old Quarto publication workflow. The included workflow deploys **only `site/`** to avoid overwriting this version.
+2. Copy the ZIP contents, including the `site/` and `.github/` folders, to the repository root.
+3. Remove or disable older Quarto publishing workflows if they remain.
 4. Commit and push to `main`.
-5. Under repository **Settings > Pages**, choose **GitHub Actions** as the deployment source.
+5. In repository **Settings > Pages**, select **GitHub Actions**.
 
-When the workflow completes, the homepage is `https://yasat.github.io/`, the top-down game is at `/game.html`, and the 3D city is at `/city.html`.
+The included `.github/workflows/deploy.yml` publishes the contents of `site/`. This project is entirely client-side JavaScript, HTML and CSS. There are no third-party runtime dependencies, build steps or server requirements. The `original-quarto/` directory is a backup of the earlier website and is not deployed.
 
-You can instead publish the contents of `site/` from a branch if you prefer, as long as `.nojekyll` and all the website files are in the published root.
+## Updating the website
 
-## Edit the content
+- Change paper titles, summaries, status labels and source links in `site/game-data.js`.
+- Edit the text portfolio in `site/index.html`.
+- Edit city size, world objects, collisions, signs, 3D projections and driving rules in `site/city.js`.
+- Edit colours and page layout in `site/city.css` and `site/styles.css`.
 
-- Edit `site/game-data.js` to change the **shared district names, billboard titles, descriptions, publication statuses and links** used by both games.
-- Edit `site/index.html` for the normal text resume.
-- Edit `site/city.css` for the 3D interface colours and layout.
-- Edit `site/city.js` for street layout, car speed and physics, and sign behaviour.
-- Edit `site/styles.css` and `site/game.js` to adjust the top-down game.
-- The unchanged preexisting Quarto project is backed up in `original-quarto/`; it is not deployed.
-
-The original 7-page CV is an early draft and contains details needing confirmation. Review all published facts, dates and URLs before deployment. The game world uses the curated material from the previous website revision, not every line of the unpublished CV.
-
-## Accessible routes
-
-Visitors never have to play either game to read the resume. The 3D city has keyboard controls, touch controls, focusable district jump buttons, a separately accessible billboard list and descriptive, keyboard-reachable detail panels. The original 2D game remains intact.
+The 3D renderer is a lightweight, low-poly Canvas 2D perspective engine. It is not a photorealistic, GTA-style WebGL engine. This is intentional to preserve fast deployment and broad browser support. Always check the research details and publication statuses before publicly publishing an updated resume.

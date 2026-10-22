@@ -101,3 +101,58 @@
 .game-page .toast{top:74px}
 .game-page .game-stage.is-desk-overview .driving-hud,.game-page .game-stage.is-desk-overview .touch-controls,.game-page .game-stage.is-desk-overview .mini-map{opacity:0;pointer-events:none}
 @media(max-width:640px){.game-page .toast{top:92px}}
+
+
+/* Version 8: expanded academic portfolio. These overrides affect the text resume only. */
+.resume-expanded .resume-nav{padding-left:max(24px,calc((100% - 1240px)/2));padding-right:max(24px,calc((100% - 1240px)/2))}
+.resume-expanded .resume-hero{padding:54px max(26px,calc((100% - 1150px)/2)) 66px}
+.resume-expanded .resume-hero::after{opacity:.7}
+.resume-expanded .resume-hero-identity{display:flex;align-items:center;gap:20px;margin:17px 0 33px;position:relative;z-index:1}
+.resume-expanded .profile-photo-frame{position:relative;display:block;flex:none;width:112px;height:112px;border-radius:50%;border:4px solid #b4dfca;box-shadow:0 0 0 7px #72bb9b27,0 12px 24px #07191665;background:#31675b;overflow:hidden}
+.resume-expanded .profile-photo{display:block;width:100%;height:100%;object-fit:cover;object-position:center 34%;border-radius:50%}
+.resume-expanded .profile-fallback{display:none;width:100%;height:100%;place-items:center;color:#ddf7e9;font-size:34px;font-weight:850;letter-spacing:-.05em}
+.resume-expanded .hero-name{display:flex;flex-direction:column;gap:2px}
+.resume-expanded .hero-name .eyebrow{font-size:11px;letter-spacing:.14em;font-weight:850}
+.resume-expanded .hero-name strong{font-size:clamp(21px,2.8vw,32px);letter-spacing:-.045em;line-height:1.18;color:#fff8e6}
+.resume-expanded .hero-name>span:last-child{font-size:13px;color:#b8d8ce}
+.resume-expanded .resume-hero h1{font-size:clamp(43px,5.3vw,70px);margin-top:0;max-width:920px}
+.resume-expanded .resume-hero>p{max-width:770px}
+.resume-expanded .resume-content{max-width:1150px;grid-template-columns:225px minmax(0,1fr);gap:58px;padding-top:56px}
+.resume-expanded .resume-toc{max-height:calc(100vh - 45px);overflow-y:auto;scrollbar-width:thin}
+.resume-expanded .resume-toc a{padding:6px 10px}
+.resume-expanded .resume-article{min-width:0}
+.resume-expanded .resume-article section{scroll-margin-top:20px;margin-bottom:50px;padding-bottom:38px}
+.resume-expanded .resume-article h2{font-size:clamp(27px,3.2vw,36px);line-height:1.19;margin-bottom:12px}
+.resume-expanded .resume-article h3:not(.resume-subheading){font-size:19px;line-height:1.35;margin-bottom:5px}
+.resume-expanded .resume-article p{line-height:1.82;margin-bottom:13px;color:#35554d;font-size:15px}
+.resume-expanded .resume-article .section-lead{font-size:17px;color:#426d5e;margin-bottom:23px;line-height:1.7}
+.resume-expanded .resume-entry{border-top:1px solid #cbdcd0;padding:22px 0 23px}
+.resume-expanded .resume-entry p:last-of-type{margin-bottom:7px}
+.resume-expanded .resume-subheading{margin:34px 0 10px!important;font-size:13px!important;line-height:1.35;letter-spacing:.12em;text-transform:uppercase;color:#37735e;border-bottom:2px solid #c5decf;padding-bottom:9px}
+.resume-expanded .resume-status{display:inline-block;font-size:11px;font-weight:750;color:#2b725b;background:#e0eee4;border:1px solid #c0d9c9;padding:3px 9px;border-radius:20px;margin:2px 0 15px}
+.resume-expanded .resume-entry .entry-meta{font-size:12px;color:#5a8273;line-height:1.5;margin-bottom:9px}
+.resume-expanded .entry-top{align-items:start}
+.resume-expanded .entry-date{flex:none;padding-top:4px}
+.resume-expanded .entry-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.resume-expanded .entry-links a{margin:0}
+.resume-expanded .publication-note{background:#e7eee3;border-left:3px solid #83b49c;padding:14px 16px;margin:18px 0 28px!important;font-size:13px!important}
+.resume-expanded a:focus-visible{outline:3px solid #e3a05d;outline-offset:3px}
+@media(max-width:900px){.resume-expanded .resume-content{grid-template-columns:180px minmax(0,1fr);gap:25px;padding-left:24px;padding-right:24px}}
+@media(max-width:760px){
+.resume-expanded .resume-nav{padding:0 12px}.resume-expanded .resume-nav .brand-text strong{font-size:11px}
+.resume-expanded .resume-nav-links{gap:5px}.resume-expanded .resume-nav-links .back-drive,.resume-expanded .resume-nav-links .back-city{font-size:10px;padding:8px 7px}
+.resume-expanded .resume-hero{padding:45px 20px 53px}.resume-expanded .resume-hero-identity{gap:15px;margin-bottom:27px}
+.resume-expanded .profile-photo-frame{width:84px;height:84px;border-width:3px}
+.resume-expanded .hero-name strong{font-size:23px}.resume-expanded .hero-name>span:last-child{font-size:11px}
+.resume-expanded .hero-name .eyebrow{font-size:9px}
+.resume-expanded .resume-hero h1{font-size:clamp(37px,8vw,52px)}
+.resume-expanded .resume-hero p{font-size:15px}
+.resume-expanded .resume-content{display:block;padding:27px 19px 55px}
+.resume-expanded .resume-toc{position:static;display:flex;flex-direction:row;max-height:none;overflow-x:auto;gap:4px;padding-bottom:15px;margin-bottom:27px}
+.resume-expanded .resume-toc a{border-bottom:2px solid transparent;border-left:0;white-space:nowrap;font-size:11px;padding:8px 7px}
+.resume-expanded .resume-article h3:not(.resume-subheading){font-size:18px}
+.resume-expanded .resume-article p{font-size:14px;line-height:1.77}
+.resume-expanded .resume-article .section-lead{font-size:15px}
+.resume-expanded .entry-top{gap:4px}
+}
+@media(max-width:360px){.resume-expanded .resume-nav .brand-mark{display:none}.resume-expanded .resume-nav-links .back-city{font-size:9px}.resume-expanded .resume-hero-actions a{font-size:11px}}

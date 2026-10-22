@@ -6,6 +6,72 @@
 @media(max-width:640px){:root{--header:61px}.app-shell{min-height:0}.site-header{padding:0 12px;gap:5px}.brand{gap:7px}.brand-mark{width:34px;height:34px}.brand-text strong{font-size:11px}.brand-text small{font-size:7px;letter-spacing:.08em}.header-actions{gap:6px}.connect-link{padding:10px 10px;font-size:10px}.connect-link span{display:none}.icon-button{padding:9px}.map-panel{top:10px;left:9px;bottom:174px;width:min(283px,calc(100% - 18px));z-index:15}.map-panel h1{font-size:29px}.discovery-panel{left:10px;right:10px;top:auto;bottom:12px;width:auto;min-height:0;max-height:174px;border-radius:9px}.discovery-header{height:33px;padding:0 12px}.discovery-header .eyebrow{font-size:8px}.detail-toggle{display:block}.discovery-panel.is-expanded{max-height:63dvh}.discovery-panel.is-expanded .discovery-content{padding-top:16px;padding-bottom:18px}.discovery-panel.is-expanded .article-title{font-size:23px}.discovery-panel.is-expanded .discovery-content p{font-size:12px;line-height:1.6}.signal-icon{font-size:15px}.discovery-content{padding:9px 13px;display:block}.discovery-panel h2{font-size:19px;line-height:1.05;margin-bottom:7px}.discovery-content p{font-size:10px;line-height:1.35}.empty-mark,.discovery-tip{display:none}.discovery-kicker{font-size:8px;margin-bottom:5px}.read-all{min-height:29px;font-size:10px;padding:0 12px}.discovery-chip{padding:3px 6px;margin-bottom:5px;font-size:8px}.discovery-panel .article-title{font-size:16px;margin-bottom:5px}.article-meta{font-size:9px;margin:0 0 5px}.discovery-link{margin-top:8px;padding:6px 9px;font-size:9px}.scene-meta{font-size:7.5px;top:15px;left:12px}.progress-hud{left:10px;bottom:196px;padding:7px 9px;gap:6px}.progress-symbol{font-size:14px}.progress-label strong{font-size:7px}.progress-label span{font-size:9px}.progress-track{width:38px;margin-left:5px}.driving-hud{right:12px;bottom:196px;padding:7px 8px;gap:6px}.speed-dial strong{font-size:17px}.hud-divider{height:22px}.touch-controls{display:grid;position:absolute;z-index:9;left:12px;right:12px;bottom:266px;grid-template-columns:58px 58px 1fr 58px 58px;gap:7px;pointer-events:none}.touch-control{pointer-events:auto;height:50px;border:1px solid #a0c9ad80;border-radius:12px;color:#ebf8e3;background:#14372cbb;font-size:27px;font-weight:800;touch-action:none;user-select:none;-webkit-user-select:none}.touch-control.is-pressed{background:#9fd5b4;color:#0f2a22}.steering-left{grid-column:1}.steering-right{grid-column:2}.throttle{grid-column:4}.reverse{grid-column:5}.intro-overlay{padding:14px}.intro-card{grid-template-columns:1fr;max-height:93dvh;overflow-y:auto}.intro-left{padding:29px 24px 30px}.intro-card h2{font-size:49px;margin:17px 0}.intro-left>p{font-size:12px;margin-bottom:16px}.intro-controls{padding-top:11px}.intro-buttons{margin-top:20px;gap:10px}.intro-art{height:135px;grid-row:1}.art-card{transform:scale(.7) rotate(-8deg);top:0;left:4%}.art-card.card-two{right:0;left:auto;bottom:0;top:auto;transform:scale(.7) rotate(8deg)}.art-car{transform:scale(.6) rotate(43deg);top:8%;left:45%}.art-label{font-size:7px;bottom:9px}}
 @media(max-width:380px){.brand-text small{display:none}.connect-link{font-size:9px}.discovery-panel{max-height:166px}.touch-controls{bottom:250px}.progress-hud,.driving-hud{bottom:187px}.start-button{width:100%}.intro-card h2{font-size:41px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}}
-/* The full text résumé page */
+/* The full text resume page */
 .resume-page{min-height:100vh;background:#f1f2e9;color:#1a3432;line-height:1.6}.resume-nav{height:75px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 max(30px,calc((100% - 1120px)/2));background:#102429;color:#ecf4e9}.resume-nav .brand-text small{color:#b0c3ba}.resume-nav-links{display:flex;gap:21px;align-items:center}.resume-nav-links a{font-size:12px;text-decoration:none;font-weight:800;color:#e0f1ea}.resume-nav-links .back-drive{border:1px solid #8acdb4;padding:10px 13px;border-radius:5px;background:#a4e8d6;color:#13302e}.resume-hero{background:#102429;color:#edf6ee;padding:90px max(30px,calc((100% - 1120px)/2)) 75px;position:relative;overflow:hidden}.resume-hero:after{content:"";position:absolute;right:-90px;top:-100px;width:420px;height:420px;border:2px solid #a9e1c329;border-radius:50%;box-shadow:0 0 0 60px #a9e1c310,0 0 0 120px #a9e1c30a;pointer-events:none}.resume-hero .eyebrow{color:#a4e9d6}.resume-hero h1{font-size:clamp(48px,6vw,80px);letter-spacing:-.065em;line-height:1.05;max-width:900px;margin:18px 0}.resume-hero h1 em{color:#b8e4cc;font-family:Georgia,serif;font-weight:400}.resume-hero p{max-width:740px;font-size:17px;color:#bdcec4;line-height:1.7}.resume-hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.resume-hero-actions a{text-decoration:none;background:#a9e4d1;color:#142b29;padding:12px 17px;border-radius:6px;font-weight:850;font-size:12px}.resume-hero-actions a.secondary{background:transparent;color:#d3eee1;border:1px solid #74978e}.resume-content{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:215px minmax(0,1fr);gap:70px;padding:62px 20px 110px}.resume-toc{position:sticky;top:24px;align-self:start;display:flex;flex-direction:column;gap:2px}.resume-toc strong{color:#64877b;font-size:10px;letter-spacing:.14em;margin-bottom:10px}.resume-toc a{font-size:13px;color:#56746c;text-decoration:none;padding:8px 10px;border-left:2px solid transparent}.resume-toc a:hover,.resume-toc a:focus-visible{border-left-color:#40786c;color:#163b32;background:#e5eee6}.resume-article section{border-bottom:1px solid #cfded2;padding:0 0 40px;margin-bottom:43px;scroll-margin-top:30px}.resume-article section:last-child{border:0}.resume-article h2{font-size:33px;letter-spacing:-.05em;margin:0 0 18px;color:#183c33}.resume-article h3{font-size:19px;letter-spacing:-.03em;margin:0 0 5px}.resume-article p{color:#46655b;font-size:15px;margin:0 0 15px}.resume-article .section-lead{font-size:16px;line-height:1.75;margin-bottom:22px}.resume-entry{padding:20px 0;border-top:1px solid #d3e2d5}.entry-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.entry-date{white-space:nowrap;color:#5a8570;font-size:12px;font-weight:800}.resume-entry .entry-meta{display:block;color:#739184;font-size:12px;font-weight:800;margin:0 0 10px}.resume-article a:not(.pill-link){color:#206853;text-underline-offset:3px}.pill-link{display:inline-block;margin:5px 7px 0 0;padding:7px 11px;font-size:11px;border:1px solid #85afa0;border-radius:6px;color:#2b6954;text-decoration:none;font-weight:800}.pill-link:hover{background:#def0e6}.resume-footer{background:#102429;color:#d6e4d8;text-align:center;padding:35px 20px;font-size:12px}.resume-footer a{color:#b7e9d2}
 @media(max-width:760px){.resume-nav{padding:0 16px;height:66px}.resume-nav-links{gap:10px}.resume-nav-links a:not(.back-drive){display:none}.resume-hero{padding:60px 20px}.resume-hero p{font-size:14px}.resume-content{grid-template-columns:1fr;gap:22px;padding:35px 20px 65px}.resume-toc{position:static;flex-direction:row;overflow-x:auto;gap:3px;padding-bottom:15px}.resume-toc strong{display:none}.resume-toc a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;font-size:11px;padding:7px}.resume-article h2{font-size:28px}.resume-article h3{font-size:17px}.resume-article p{font-size:13px}.entry-top{flex-direction:column;gap:0;margin-bottom:5px}}
+
+
+/* v2: bright driving world with clear, accessible controls */
+.game-page { --bg:#e5f3e7; --panel:#fffdf4; --panel2:#f4fff5; --paper:#1a4646; --muted:#4a7073; --mint:#338975; --orange:#e99b55; color:#19464a; background:#e8f5e9; }
+.game-page .site-header {background:#fffdf4; border-bottom:1px solid #a9cfc2;box-shadow:0 3px 16px #477e7221}
+.game-page .brand-mark {background:#d8f0e1;border-color:#77b3a0}
+.game-page .brand-road {background:#448e7e}
+.game-page .brand-road:after {border-color:#e9fff1}
+.game-page .brand-text small {color:#48726b}
+.game-page .header-nav a {color:#416b66}
+.game-page .header-nav a:hover,.game-page .header-nav .nav-active {color:#13473b}
+.game-page .header-nav a.nav-active:before {background:#3d947c}
+.game-page .connect-link {background:#225f54;color:white;border-color:#225f54}
+.game-page .connect-link:hover {background:#377968}
+.game-page .icon-button {background:white;color:#265c53;border-color:#8bbcab}
+.game-page .game-stage {background:#e5f2e6}
+.game-page .canvas-vignette {background:radial-gradient(ellipse at 50% 50%,transparent 45%,#9ec3b126 100%)}
+.game-page .scene-meta {color:#28645e;text-shadow:none}
+.game-page .meta-sep {color:#367c71}
+.game-page .live-dot {background:#e98e59;box-shadow:0 0 0 3px #ffdabd}
+.game-page .map-panel {background:#fffcf4f5;color:#173e3e;border-color:#93beb1;box-shadow:0 18px 35px #3d817c35}
+.game-page .eyebrow {color:#346e62}
+.game-page .map-panel h1 em {color:#228a75}
+.game-page .map-description {color:#51786f}
+.game-page .map-menu-heading {color:#56786e}
+.game-page .district-button {color:#285b52}
+.game-page .district-button:hover,.game-page .district-button.is-current {background:#e1f5e7;border-color:#91c5ae}
+.game-page .district-button .district-number {color:#4c8478}
+.game-page .district-button .district-arrow {color:#278b6f}
+.game-page .map-footer {border-top-color:#ccdfd1;color:#578276}
+.game-page .map-footer-glyph {color:#2f8d71}
+.game-page .discovery-panel {background:#fffdf7;border-color:#b0d2c2;box-shadow:0 12px 45px #43847535}
+.game-page .discovery-header {border-bottom-color:#dbe8d9}
+.game-page .read-all {background:#d8eee0}
+.game-page .read-all:hover {background:#c6e7d5}
+.game-page .progress-hud,.game-page .driving-hud {background:#fffdf5f5;color:#184f49;border-color:#a3cdbd;box-shadow:0 10px 28px #44827a27}
+.game-page .progress-label span,.game-page .drive-instructions,.game-page .drive-instructions small {color:#426e67}
+.game-page .progress-track {background:#c5ded5}
+.game-page .progress-track span {background:#2d9f7a}
+.game-page .speed-dial small,.game-page .soundless-help {color:#457166}
+.game-page .hud-divider {background:#afd0c2}
+.game-page .soundless-help {border-color:#85b5a2}
+.game-page .mini-map {background:#fffdf4e8;border-color:#8db9a9}
+.game-page .mini-map span {color:#245c50}
+.game-page .intro-overlay {background:#e1f0e4c7}
+.game-page .intro-card {background:#fffdf5;border-color:#75b3a4;box-shadow:0 28px 95px #295b6057}
+.game-page .intro-art {background:#c8ecd6}
+.game-page .art-grid {background-image:linear-gradient(#63a88e36 1px,transparent 1px),linear-gradient(90deg,#63a88e36 1px,transparent 1px)}
+.game-page .art-road {background:#97bbba;border-color:#619b9b;box-shadow:0 0 0 12px #dcf0dd}
+.game-page .art-road:after {border-color:#fff7d9}
+.game-page .art-card {border-color:#32816e;box-shadow:0 10px 0 #386f5a}
+.game-page .art-label {color:#205b52}
+.game-page .intro-close {background:#ffffffdd;color:#21594d;border-color:#a8cdbb}
+.game-page .touch-control {background:#fffbeced;border-color:#6eb7a0;color:#205c50;box-shadow:0 3px 12px #1d7f6b26;font-size:12px;letter-spacing:.025em}
+.game-page .touch-control.is-pressed {background:#75d7a9;color:#103d31}
+.game-page .toast {box-shadow:0 10px 20px #4388763b}
+.game-page .signal-icon {font-size:9px;font-weight:850;letter-spacing:.09em}
+/* Keep the full text version prominent, including on narrow screens. */
+.resume-page .resume-nav-links .back-drive {background:#b8f1d0;border-color:#71c4a3;color:#0a4139;white-space:nowrap}
+.resume-page .resume-hero .home-mode-note {font-size:10px;font-weight:850;letter-spacing:.13em;color:#acd9bb;margin-bottom:15px}
+.resume-page .resume-hero .home-mode-note span {padding:0 6px;color:#729587}
+.resume-page .resume-hero-actions a.game-hero-button {background:#bdf3d4;color:#103c32;box-shadow:0 5px 0 #5a9980}
+.resume-page .resume-hero-actions a.game-hero-button:hover {background:#daf9e3}
+.resume-page .resume-nav-links a:hover {text-decoration:underline;text-underline-offset:5px}
+@media(max-width:760px){.resume-page .resume-nav-links .back-drive {padding:9px 11px;font-size:11px}}
+@media(max-width:380px){.resume-page .brand-text small{display:none}}

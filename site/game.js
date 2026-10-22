@@ -44,7 +44,7 @@
     button.dataset.zone = zone.id;
     button.setAttribute('aria-label', `Jump to ${zone.name}`);
     const number = String(zones.indexOf(zone) + 1).padStart(2, '0');
-    button.innerHTML = `<span class="district-number">${number}</span><span class="district-color" style="background:${zone.tone}"></span><span class="district-name"></span><span class="district-arrow" aria-hidden="true">↗</span>`;
+    button.innerHTML = `<span class="district-number">${number}</span><span class="district-color" style="background:${zone.tone}"></span><span class="district-name"></span><span class="district-arrow" aria-hidden="true">+</span>`;
     button.querySelector('.district-name').textContent = zone.name;
     button.addEventListener('click', () => jumpTo(zone));
     nav.appendChild(button);
@@ -107,7 +107,7 @@
     }
     centerCamera(false, dt);
     for (const block of blocks) {
-      // A broken résumé card respawns *only after* it leaves the screen.
+      // A broken resume card respawns *only after* it leaves the screen.
       if (block.broken) {
         if (!rectVisible(block.x, block.y, block.w, block.h, 24)) block.broken = false;
         continue;
@@ -144,7 +144,7 @@
     document.getElementById('progressText').textContent = `${picked.size} of ${count} discovered`;
     document.getElementById('progressFill').style.width = `${100 * picked.size / count}%`;
     showDetail(block);
-    toast.textContent = isNew ? `✦ Discovered: ${block.title}` : `↻ Rediscovered: ${block.title}`;
+    toast.textContent = isNew ? `Discovered: ${block.title}` : `Rediscovered: ${block.title}`;
     toast.classList.add('is-visible');
     toastUntil = time + 2100;
   }
@@ -152,11 +152,11 @@
     const zone = block.zone;
     detailPanel.classList.remove('is-expanded');
     detailToggle.setAttribute('aria-expanded', 'false');
-    detailToggle.textContent = 'Expand ↕';
+    detailToggle.textContent = 'Expand';
     discovery.replaceChildren();
     const badge = document.createElement('span'); badge.className = 'discovery-chip';
     badge.textContent = zone.name.toUpperCase();
-    const kicker = document.createElement('div'); kicker.className = 'discovery-kicker'; kicker.textContent = '✦ RESUME CARD FOUND';
+    const kicker = document.createElement('div'); kicker.className = 'discovery-kicker'; kicker.textContent = 'RESUME CARD FOUND';
     const title = document.createElement('h2'); title.className = 'article-title'; title.textContent = block.title;
     const meta = document.createElement('div'); meta.className = 'article-meta'; meta.textContent = block.meta;
     const description = document.createElement('p'); description.textContent = block.description;
@@ -165,7 +165,7 @@
       const link = document.createElement('a');
       link.className = 'discovery-link'; link.href = block.url;
       if (block.url.startsWith('https://')) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
-      link.textContent = `${block.linkLabel || 'Learn more'} ↗`;
+      link.textContent = block.linkLabel || 'Learn more';
       discovery.append(link);
     }
   }
@@ -177,17 +177,17 @@
     car.angle = Math.PI / 2;
     centerCamera(true);
     if (window.innerWidth < 961) { mapPanel.classList.remove('is-open'); mapToggle.setAttribute('aria-expanded', 'false'); }
-    toast.textContent = `↗ Welcome to ${zone.name}. Drive forward to explore.`;
+    toast.textContent = `Welcome to ${zone.name}. Drive forward to explore.`;
     toast.classList.add('is-visible'); toastUntil = performance.now() + 2000;
     canvas.focus({preventScroll:true});
   }
   function drawGround() {
-    ctx.fillStyle = '#1c3333'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#deeee6'; ctx.fillRect(0, 0, w, h);
     ctx.save(); ctx.translate(-camera.x, -camera.y);
-    rounded(0, 0, WORLD.width, WORLD.height, 0, '#263d39', '#7c9470', 9);
+    rounded(0, 0, WORLD.width, WORLD.height, 0, '#e4f2dd', '#89b69c', 9);
     // Very subtle contour lines, deliberately static/deterministic.
     const spacing = 75;
-    ctx.strokeStyle = '#9bc4ae10'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#438e7040'; ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = Math.floor(camera.x / spacing) * spacing; x <= camera.x + w + spacing; x += spacing) {
       ctx.moveTo(x, Math.max(0, camera.y)); ctx.lineTo(x, Math.min(WORLD.height, camera.y + h));
@@ -215,15 +215,15 @@
       const y = road.vertical ? 0 : road.pos - road.width / 2;
       const rw = road.vertical ? road.width : WORLD.width;
       const rh = road.vertical ? WORLD.height : road.width;
-      rounded(x, y, rw, rh, 0, '#3b5754', '#59746a', 4);
-      ctx.save(); ctx.strokeStyle = '#e9d8ab76'; ctx.lineWidth = 3;
+      rounded(x, y, rw, rh, 0, '#a1bcca', '#729aaa', 4);
+      ctx.save(); ctx.strokeStyle = '#fffde2dc'; ctx.lineWidth = 3;
       ctx.setLineDash([28, 34]); ctx.beginPath();
       if (road.vertical) { ctx.moveTo(road.pos, 0); ctx.lineTo(road.pos, WORLD.height); }
       else { ctx.moveTo(0, road.pos); ctx.lineTo(WORLD.width, road.pos); }
       ctx.stroke(); ctx.restore();
     }
     // Connecting streets visually guide the route between neighbourhoods.
-    ctx.save(); ctx.strokeStyle = '#5b7369'; ctx.lineWidth = 18; ctx.setLineDash([3, 31]);
+    ctx.save(); ctx.strokeStyle = '#84a4ae'; ctx.lineWidth = 18; ctx.setLineDash([3, 31]);
     ctx.beginPath(); ctx.moveTo(700, 1270); ctx.lineTo(700, 2290);
     ctx.moveTo(3300, 1270); ctx.lineTo(3300, 2290); ctx.stroke(); ctx.restore();
   }
@@ -237,30 +237,30 @@
         const sx = x + Math.sin(x * 0.021 + y * .017) * 41, sy = y + Math.cos(x * .017 - y * .011) * 38;
         if (zones.some(z => sx > z.x - 34 && sx < z.x + z.w + 34 && sy > z.y - 34 && sy < z.y + z.h + 34)) continue;
         if (Math.abs(sx - 1430) < 115 || Math.abs(sx - 2630) < 115 || Math.abs(sy - 1270) < 118 || Math.abs(sy - 2290) < 118) continue;
-        ctx.fillStyle = '#314e45'; ctx.beginPath(); ctx.arc(sx, sy, 24, 0, 6.283); ctx.fill();
-        ctx.fillStyle = '#3c6151'; ctx.beginPath(); ctx.arc(sx - 5, sy - 6, 16, 0, 6.283); ctx.fill();
-        ctx.fillStyle = '#a1c08a35'; ctx.beginPath(); ctx.arc(sx + 9, sy - 8, 7, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#91c68a'; ctx.beginPath(); ctx.arc(sx, sy, 24, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#5ca882'; ctx.beginPath(); ctx.arc(sx - 5, sy - 6, 16, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#e5ffc5a0'; ctx.beginPath(); ctx.arc(sx + 9, sy - 8, 7, 0, 6.283); ctx.fill();
       }
     }
   }
   function drawZone(zone) {
     const z = zone;
-    rounded(z.x + 9, z.y + 13, z.w, z.h, 26, '#0a141b60');
-    rounded(z.x, z.y, z.w, z.h, 25, color(z.tone, .14), color(z.tone, .49), 2);
-    rounded(z.x + 21, z.y + 21, z.w - 42, z.h - 42, 15, '#132f2d52', color(z.tone, .25), 1);
+    rounded(z.x + 9, z.y + 13, z.w, z.h, 26, '#4f93743b');
+    rounded(z.x, z.y, z.w, z.h, 25, color(z.tone, .70), color(z.tone, .92), 2);
+    rounded(z.x + 21, z.y + 21, z.w - 42, z.h - 42, 15, '#ffffff69', color(z.tone, .25), 1);
     // Small marker repeated along top edge.
     for (let i = 0; i < 13; i++) {
       ctx.fillStyle = color(z.tone, i % 2 ? .15 : .50);
       ctx.fillRect(z.x + 35 + i * 29, z.y + 20, 15, 3);
     }
     ctx.textBaseline = 'top';
-    ctx.font = '800 13px system-ui, sans-serif'; ctx.fillStyle = color(z.tone, .95);
+    ctx.font = '800 13px system-ui, sans-serif'; ctx.fillStyle = '#24565a';
     ctx.fillText(z.tag, z.x + 57, z.y + 60);
-    ctx.font = '800 38px system-ui, sans-serif'; ctx.fillStyle = '#edf5ea';
+    ctx.font = '800 38px system-ui, sans-serif'; ctx.fillStyle = '#153d3e';
     ctx.fillText(z.name.toUpperCase(), z.x + 56, z.y + 86);
-    ctx.font = '700 11px system-ui, sans-serif'; ctx.fillStyle = '#b7ccc2';
+    ctx.font = '700 11px system-ui, sans-serif'; ctx.fillStyle = '#335e5b';
     ctx.fillText(z.eyebrow, z.x + 58, z.y + 145);
-    ctx.font = '800 88px system-ui, sans-serif'; ctx.fillStyle = color(z.tone, .08);
+    ctx.font = '800 88px system-ui, sans-serif'; ctx.fillStyle = color(z.tone, .42);
     ctx.textAlign = 'right'; ctx.fillText(String(zones.indexOf(z) + 1).padStart(2, '0'), z.x + z.w - 37, z.y + 55); ctx.textAlign = 'left';
     for (let index = 0; index < 4; index++) {
       const b = z.blocks[index];
@@ -271,18 +271,18 @@
   function drawBlock(b) {
     // Important: the block is *intact and breakable*. Content is revealed in the DOM panel after impact.
     const glow = b.zone.tone;
-    rounded(b.x + 8, b.y + 11, b.w, b.h, 10, '#061e1c8c');
-    rounded(b.x, b.y, b.w, b.h, 10, '#e8f0e5', glow, 4);
-    rounded(b.x + 12, b.y + 12, b.w - 24, 24, 4, color(glow, .72));
-    ctx.font = '900 11px system-ui, sans-serif'; ctx.fillStyle = '#25433e'; ctx.textBaseline = 'middle';
+    rounded(b.x + 7, b.y + 10, b.w, b.h, 10, '#567c7166');
+    rounded(b.x, b.y, b.w, b.h, 10, '#ffffff', color(glow, .97), 4);
+    rounded(b.x + 12, b.y + 12, b.w - 24, 24, 4, color(glow, .92));
+    ctx.font = '900 11px system-ui, sans-serif'; ctx.fillStyle = '#153d43'; ctx.textBaseline = 'middle';
     ctx.fillText('BREAK TO DISCOVER', b.x + 24, b.y + 24);
-    ctx.font = '900 17px system-ui, sans-serif'; ctx.fillStyle = '#1a3734'; ctx.textBaseline = 'top';
+    ctx.font = '850 16px system-ui, sans-serif'; ctx.fillStyle = '#173f47'; ctx.textBaseline = 'top';
     drawWrapped(b.title, b.x + 24, b.y + 50, b.w - 48, 21, 2);
-    ctx.fillStyle = '#68887b'; ctx.font = '750 10px system-ui, sans-serif';
-    const caption = b.meta.length > 38 ? `${b.meta.slice(0, 36)}…` : b.meta;
+    ctx.fillStyle = '#496c68'; ctx.font = '750 10px system-ui, sans-serif';
+    const caption = b.meta.length > 38 ? `${b.meta.slice(0, 36)}...` : b.meta;
     ctx.fillText(caption, b.x + 24, b.y + b.h - 23);
-    ctx.font = '900 22px system-ui, sans-serif'; ctx.fillStyle = '#628779';
-    ctx.fillText('↗', b.x + b.w - 33, b.y + b.h - 39);
+    ctx.font = '900 22px system-ui, sans-serif'; ctx.fillStyle = '#1b776b';
+    ctx.fillText('+', b.x + b.w - 33, b.y + b.h - 39);
   }
   function drawWrapped(text, x, y, maxWidth, lineHeight, maxLines) {
     const words = text.split(' '); let line = '', lines = [];
@@ -295,8 +295,8 @@
     for (let i = 0; i < Math.min(lines.length, maxLines); i++) {
       let l = lines[i];
       if (i === maxLines - 1 && lines.length > maxLines) {
-        while (l.length && ctx.measureText(l + '…').width > maxWidth) l = l.slice(0, -1);
-        l += '…';
+        while (l.length && ctx.measureText(l + '...').width > maxWidth) l = l.slice(0, -1);
+        l += '...';
       }
       ctx.fillText(l, x, y + i * lineHeight);
     }
@@ -304,16 +304,16 @@
   function drawStartPlaza() {
     const cx = 2010, cy = 1580;
     if (!rectVisible(cx - 290, cy - 290, 580, 580, 60)) return;
-    ctx.beginPath(); ctx.arc(cx, cy, 280, 0, Math.PI * 2); ctx.fillStyle = '#192d2bd0'; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx, cy, 229, 0, Math.PI * 2); ctx.strokeStyle = '#82bc9e6c'; ctx.lineWidth = 3; ctx.setLineDash([9, 20]); ctx.stroke(); ctx.setLineDash([]);
-    ctx.beginPath(); ctx.arc(cx, cy, 135, 0, Math.PI * 2); ctx.strokeStyle = '#d9daa352'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = '#a1d8c997'; ctx.textAlign = 'center'; ctx.font = '800 17px system-ui, sans-serif';
+    ctx.beginPath(); ctx.arc(cx, cy, 280, 0, Math.PI * 2); ctx.fillStyle = '#fffcdeeb'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 229, 0, Math.PI * 2); ctx.strokeStyle = '#2f896da3'; ctx.lineWidth = 3; ctx.setLineDash([9, 20]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(cx, cy, 135, 0, Math.PI * 2); ctx.strokeStyle = '#efad7191'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#1b6758'; ctx.textAlign = 'center'; ctx.font = '800 17px system-ui, sans-serif';
     ctx.fillText('START YOUR JOURNEY', cx, cy + 130);
-    ctx.fillStyle = '#fff5de7d'; ctx.font = '800 11px system-ui, sans-serif';
-    ctx.fillText('RESEARCH  •  DESIGN  •  BUILD', cx, cy + 156);
+    ctx.fillStyle = '#356b65'; ctx.font = '800 11px system-ui, sans-serif';
+    ctx.fillText('RESEARCH   /   DESIGN   /   BUILD', cx, cy + 156);
     ctx.textAlign = 'left';
-    const arrowPositions = [{x:cx - 215,y:cy,txt:'← INDUSTRY'}, {x:cx + 215,y:cy,txt:'AI →'}, {x:cx,y:cy - 210,txt:'↑ PAPERS'}, {x:cx,y:cy + 220,txt:'↓ SERVICE'}];
-    for (const a of arrowPositions) { ctx.textAlign = 'center';ctx.fillStyle = '#9fc9ab';ctx.font = '750 12px system-ui,sans-serif';ctx.fillText(a.txt,a.x,a.y); }
+    const arrowPositions = [{x:cx - 215,y:cy,txt:'INDUSTRY'}, {x:cx + 215,y:cy,txt:'AI'}, {x:cx,y:cy - 210,txt:'PAPERS'}, {x:cx,y:cy + 220,txt:'SERVICE'}];
+    for (const a of arrowPositions) { ctx.textAlign = 'center';ctx.fillStyle = '#2f7666';ctx.font = '750 12px system-ui,sans-serif';ctx.fillText(a.txt,a.x,a.y); }
     ctx.textAlign = 'left';
   }
   function drawParticle(p) {
@@ -343,7 +343,7 @@
   function drawMiniMap() {
     if (window.innerWidth < 1550 || !miniCtx) return;
     const mw = miniCanvas.width, mh = miniCanvas.height;
-    miniCtx.clearRect(0, 0, mw, mh); miniCtx.fillStyle = '#193630'; miniCtx.fillRect(0, 0, mw, mh);
+    miniCtx.clearRect(0, 0, mw, mh); miniCtx.fillStyle = '#e0f0e0'; miniCtx.fillRect(0, 0, mw, mh);
     const sc = Math.min((mw - 16) / WORLD.width, (mh - 14) / WORLD.height);
     const left = (mw - WORLD.width * sc) / 2, top = (mh - WORLD.height * sc) / 2;
     for (const zone of zones) {
@@ -351,7 +351,7 @@
       miniCtx.fillRect(left + zone.x * sc, top + zone.y * sc, zone.w * sc, zone.h * sc);
     }
     miniCtx.fillStyle = '#ffbb78';miniCtx.beginPath();miniCtx.arc(left + car.x * sc, top + car.y * sc, 4, 0, 6.283);miniCtx.fill();
-    miniCtx.strokeStyle = '#e8f0d6';miniCtx.strokeRect(left + camera.x * sc, top + camera.y * sc, w * sc, h * sc);
+    miniCtx.strokeStyle = '#2a655f';miniCtx.strokeRect(left + camera.x * sc, top + camera.y * sc, w * sc, h * sc);
   }
   function frame(time) {
     const dt = Math.min(.038, (time - (lastTime || time)) / 1000); lastTime = time;
@@ -373,7 +373,7 @@
     started = false; keys.clear();car.speed = 0;
     app.inert = true;
     intro.classList.remove('is-hidden');intro.removeAttribute('aria-hidden');
-    startButton.textContent = 'Resume driving ↗';
+    startButton.textContent = 'Resume driving';
     startButton.focus({preventScroll:true});
   }
   startButton.addEventListener('click', begin);
@@ -382,7 +382,7 @@
   detailToggle.addEventListener('click', () => {
     const expanded = detailPanel.classList.toggle('is-expanded');
     detailToggle.setAttribute('aria-expanded', String(expanded));
-    detailToggle.textContent = expanded ? 'Collapse ↕' : 'Expand ↕';
+    detailToggle.textContent = expanded ? 'Collapse' : 'Expand';
   });
   mapToggle.addEventListener('click', () => {
     const open = mapPanel.classList.toggle('is-open');
@@ -420,6 +420,9 @@
   });
   window.addEventListener('resize', resize);
   resize();
+  // A link from the text homepage starts the game immediately.
+  // Direct visitors to game.html still see the instruction overlay.
+  if (new URLSearchParams(window.location.search).get('start') === '1') begin();
   window.requestAnimationFrame(frame);
   // Expose read-only debugging snapshots for automated smoke testing; no gameplay dependency.
   window.__resumeGameDebug = () => ({x: car.x, y: car.y, speed: car.speed, discoveries: picked.size, broken: blocks.filter(b => b.broken).map(b => b.id), camera: {...camera}, started});

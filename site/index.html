@@ -2,105 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0c171b" />
-  <meta name="description" content="Drive through the research, publications, teaching and software engineering journey of Satwik Ghanta, PhD researcher at the University of Glasgow." />
-  <meta property="og:title" content="Satwik Ghanta — Drive Through My Resume" />
-  <meta property="og:description" content="A top-down interactive research portfolio. Drive a tiny car through eight districts and discover my work." />
-  <title>Drive Through My Resume — Satwik Ghanta</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#102429" />
+  <meta name="description" content="Academic resume of Satwik Ghanta, PhD researcher at the University of Glasgow. Research, publications, teaching, innovation and software engineering." />
+  <title>Satwik Ghanta | Research, Publications and Resume</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="stylesheet" href="styles.css" />
-  <script src="game-data.js" defer></script>
-  <script src="game.js" defer></script>
 </head>
-<body class="game-page">
-  <a class="skip-link" href="resume.html">Skip the game — read my résumé</a>
-  <div class="app-shell">
-    <header class="site-header">
-      <a class="brand" href="index.html" aria-label="Satwik Ghanta, home">
-        <span class="brand-mark" aria-hidden="true"><span class="brand-road"></span><span class="brand-car"></span></span>
-        <span class="brand-text"><strong>SATWIK <span>GHANTA</span></strong><small>RESEARCHER / BUILDER / EDUCATOR</small></span>
-      </a>
-      <nav class="header-nav" aria-label="Main navigation">
-        <a class="nav-active" href="index.html" aria-current="page">The drive</a>
-        <a href="resume.html">Read résumé <span aria-hidden="true">↗</span></a>
-        <a href="resume.html#publications">Publications</a>
-      </nav>
-      <div class="header-actions">
-        <button class="icon-button map-toggle" id="mapToggle" type="button" aria-expanded="false" aria-controls="mapPanel">☷ <span>Map</span></button>
-        <a class="connect-link" href="mailto:y.ghanta.1@research.gla.ac.uk">Let's connect <span aria-hidden="true">↗</span></a>
-      </div>
-    </header>
-
-    <main class="game-stage" id="stage">
-      <canvas id="world" tabindex="0" aria-label="Top-down driving map. Use the arrow keys or W A S D to drive through résumé blocks. Use district buttons to navigate without driving."></canvas>
-      <div class="canvas-vignette" aria-hidden="true"></div>
-      <div class="scene-meta" aria-hidden="true"><span class="live-dot"></span> INTERACTIVE RESUME <span class="meta-sep">/</span> EDITION 2026</div>
-
-      <aside class="map-panel" id="mapPanel" aria-label="Map and district navigation">
-        <div class="eyebrow"><span class="tiny-star">✳</span> THE WORLD MAP</div>
-        <h1>One career.<br /><em>Eight districts.</em></h1>
-        <p class="map-description">Every neighbourhood tells a little part of my story. Drive through the cards to discover what I've been working on.</p>
-        <div class="map-menu-heading"><span>EXPLORE DISTRICTS</span><span>01—08</span></div>
-        <nav id="districtNav" class="district-nav" aria-label="Jump to district"></nav>
-        <div class="map-footer"><span class="map-footer-glyph">↳</span><span>Break a card, find a story.<br />It resets when you drive away.</span></div>
-      </aside>
-
-      <aside class="discovery-panel" id="discoveryPanel" aria-live="polite" aria-atomic="true">
-        <div class="discovery-header"><span class="eyebrow">YOUR DISCOVERY LOG</span><button class="detail-toggle" id="detailToggle" type="button" aria-controls="discoveryContent" aria-expanded="false" aria-label="Expand discovery details">Expand ↕</button><span class="signal-icon" aria-hidden="true">◈</span></div>
-        <div class="discovery-content" id="discoveryContent">
-          <div class="empty-mark" aria-hidden="true">↗</div>
-          <div class="discovery-kicker">READY FOR THE ROAD?</div>
-          <h2>Your next<br /><em>discovery awaits.</em></h2>
-          <p>Drive into one of the colourful résumé cards. It will burst into pieces and reveal more about my work here.</p>
-          <div class="discovery-tip">TIP: USE <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> OR ARROW KEYS</div>
-        </div>
-        <a class="read-all" href="resume.html">Prefer reading? Explore the full résumé <span aria-hidden="true">↗</span></a>
-      </aside>
-
-      <div class="progress-hud" role="status" aria-label="Discovery progress">
-        <span class="progress-symbol" aria-hidden="true">✦</span>
-        <div class="progress-label"><strong>FIELD NOTES COLLECTED</strong><span id="progressText">0 of 32 discovered</span></div>
-        <div class="progress-track"><span id="progressFill"></span></div>
-      </div>
-
-      <div class="driving-hud" aria-label="Driving status">
-        <span class="speed-dial"><strong id="speedText">00</strong><small>KM/H*</small></span>
-        <span class="hud-divider"></span>
-        <span class="drive-instructions">↑ accelerate <span>·</span> ↓ reverse <span>·</span> ← → steer<br /><small>* Playful speed indicator, not physical speed</small></span>
-        <button class="soundless-help" type="button" id="helpButton" aria-label="Show instructions">?</button>
-      </div>
-      <div class="mini-map" aria-hidden="true"><canvas id="minimap" width="190" height="138"></canvas><span>YOU ARE HERE ↑</span></div>
-      <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-      <div class="touch-controls" aria-label="Touch driving controls">
-        <button class="touch-control steering-left" type="button" data-control="left" aria-label="Steer left">↶</button>
-        <button class="touch-control steering-right" type="button" data-control="right" aria-label="Steer right">↷</button>
-        <button class="touch-control throttle" type="button" data-control="up" aria-label="Accelerate">↑</button>
-        <button class="touch-control reverse" type="button" data-control="down" aria-label="Reverse">↓</button>
-      </div>
-    </main>
+<body class="resume-page">
+  <a class="skip-link" href="#about">Skip to main content</a>
+  <header class="resume-nav">
+    <a href="index.html" class="brand"><span class="brand-mark" aria-hidden="true"><span class="brand-road"></span><span class="brand-car"></span></span><span class="brand-text"><strong>SATWIK <span>GHANTA</span></strong><small>RESEARCHER / BUILDER / EDUCATOR</small></span></a>
+    <nav class="resume-nav-links" aria-label="Site navigation"><a href="#research">Research</a><a href="#publications">Publications</a><a href="#teaching">Teaching</a><a href="#contact">Contact</a><a href="game.html?start=1" class="back-drive">Play the game</a></nav>
+  </header>
+  <div class="resume-hero">
+    <div class="home-mode-note">TEXT VERSION <span> / </span> PREFER TO EXPLORE? TRY THE GAME</div>
+    <div class="eyebrow">ACADEMIC RESUME <span style="padding:0 10px">/</span> UNIVERSITY OF GLASGOW</div>
+    <h1>Building better software,<br /><em>with people in mind.</em></h1>
+    <p>I'm Satwik Ghanta, a PhD researcher in Computing Science working at the intersection of sustainable software engineering, human-centred AI, and AI for software engineering.</p>
+    <div class="resume-hero-actions"><a class="game-hero-button" href="game.html?start=1">Explore the driving game</a><a class="secondary" href="mailto:y.ghanta.1@research.gla.ac.uk">Email me</a><a class="secondary" href="https://scholar.google.com/citations?user=WJTqjlUAAAAJ" target="_blank" rel="noopener noreferrer">Google Scholar</a></div>
   </div>
 
-  <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-labelledby="introTitle">
-    <div class="intro-card">
-      <div class="intro-left">
-        <div class="intro-eyebrow"><span class="tiny-star">✳</span> AN UNCONVENTIONAL PORTFOLIO <span>— VOL. 01</span></div>
-        <h2 id="introTitle">Not your<br />usual <em>résumé.</em></h2>
-        <p>Hi, I'm <strong>Satwik</strong> — a PhD researcher in Computing Science at the University of Glasgow. Instead of scrolling through my career, how about taking it for a drive?</p>
-        <div class="intro-controls"><span>THE CONTROLS</span><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>or arrow keys to drive</span></div>
-        <div class="intro-buttons"><button type="button" class="start-button" id="startButton">Start your engine <span aria-hidden="true">↗</span></button><a href="resume.html" class="skip-intro">Just show me the résumé <span aria-hidden="true">→</span></a></div>
-      </div>
-      <div class="intro-art" aria-hidden="true">
-        <div class="art-grid"></div><div class="art-road road-one"></div><div class="art-road road-two"></div>
-        <div class="art-card card-one"><small>01 / RESEARCH</small><strong>SUSTAINABLE<br />SOFTWARE</strong></div>
-        <div class="art-card card-two"><small>02 / DISCOVER</small><strong>MAKE AN<br />IMPACT</strong></div>
-        <div class="art-car"><div class="art-windshield"></div><div class="art-roof"></div></div>
-        <div class="art-label">A LITTLE JOURNEY THROUGH A LOT OF WORK ↗</div>
-      </div>
-      <button class="intro-close" id="introClose" type="button" aria-label="Close introduction and start driving">×</button>
-    </div>
-  </div>
-  <noscript><div class="noscript">The driving game requires JavaScript. You can still read my <a href="resume.html">complete text résumé</a>.</div></noscript>
+  <main class="resume-content">
+    <nav class="resume-toc" aria-label="Resume sections"><strong>ON THIS PAGE</strong><a href="#about">About</a><a href="#research">Research</a><a href="#publications">Publications</a><a href="#teaching">Teaching & innovation</a><a href="#education">Education</a><a href="#engineering">Software engineering</a><a href="#service">Service & mentorship</a><a href="#contact">Contact</a></nav>
+    <article class="resume-article">
+      <section id="about"><h2>About me</h2><p class="section-lead">My central question is how sustainability becomes part of normal software engineering work, rather than remaining an organisational aspiration or an isolated technical activity.</p><p>Through empirical research with financial-services practitioners, I explore developer perspectives, the feasibility of sustainability tools, organisational adoption conditions and the practical difficulties of introducing change in Agile teams. I also collaborate on research concerning LLM-supported Agile coaching, participatory AI fairness, and human control in generative-AI creativity tools.</p><p>My work draws on industry software engineering, university teaching, educational software design and research mentorship. I'm interested in research that connects sound engineering methods to the people and organisations that use them.</p></section>
+
+      <section id="research"><h2>Research focus</h2><p class="section-lead">Research grounded in the reality of software teams - including the environmental, technical, economic, social and individual dimensions of sustainability.</p>
+        <div class="resume-entry"><h3>Sustainability in software engineering teams</h3><p>Exploring how developers, team leads and managers understand sustainability and how their priorities and constraints affect everyday decisions and organisational practice.</p></div>
+        <div class="resume-entry"><h3>Feasibility and adoption of sustainability tools</h3><p>Investigating deployment, data-access demands, outputs, workflow fit, reviewability and organisational responsibility as practical conditions for introducing sustainability-oriented tools.</p></div>
+        <div class="resume-entry"><h3>Human-centred AI and AI for software engineering</h3><p>Contributing to participatory AI fairness, AI-enhanced educational tools, LLM-assisted Agile coaching and human control in generative-AI creation workflows.</p></div>
+        <div class="resume-entry"><h3>Industry collaboration</h3><p>My Barclays-funded doctoral research is carried out in collaboration with software practitioners in the financial-services sector. It includes industrial case studies and longitudinal work on sustainability-oriented software engineering.</p></div>
+      </section>
+
+      <section id="publications"><h2>Publications & manuscripts</h2><p class="section-lead">Published and accepted work is separated from preprints and manuscripts under review, using the status recorded in my draft CV.</p>
+        <div class="resume-entry"><div class="entry-top"><h3>Practical Feasibility of Sustainable Software Engineering Tools and Techniques</h3><span class="entry-date">2026</span></div><span class="entry-meta">ACM FSE 2026, Industry Papers | Published | First author</span><p>S. Ghanta, P. Gregory and G. Çalıklı. Pages 829-839. Examines whether sustainability tools can be introduced in industrial engineering workflows and provide useful outputs to practitioners.</p><a class="pill-link" href="https://doi.org/10.1145/3803437.3805254" target="_blank" rel="noopener noreferrer">Publisher DOI </a><a class="pill-link" href="https://arxiv.org/abs/2603.29056" target="_blank" rel="noopener noreferrer">Preprint </a></div>
+        <div class="resume-entry"><div class="entry-top"><h3>Perspectives, Needs and Challenges for Sustainable Software Engineering Teams: A FinServ Case Study</h3><span class="entry-date">2025</span></div><span class="entry-meta">ESEM 2025 | Published | First author</span><p>S. Ghanta, P. Gregory and G. Çalıklı. Pages 196-206. A case study of sustainability perspectives, workload and organisational responsibility in financial-services software engineering.</p><a class="pill-link" href="https://doi.org/10.1109/ESEM64174.2025.00022" target="_blank" rel="noopener noreferrer">Publisher DOI </a></div>
+        <div class="resume-entry"><div class="entry-top"><h3>Evaluating the Usefulness of Large Language Models in Learning Agile Coaching</h3><span class="entry-date">2026</span></div><span class="entry-meta">CSEE&amp;T 2026 | Accepted for publication | First author</span><p>S. Ghanta, E. Obode, L. Luo, C. Hall, T. Storer, P. Gregory and G. Çalıklı. Evaluates LLM outputs for practical Agile coaching scenarios relevant to software engineering education.</p></div>
+        <div class="resume-entry"><div class="entry-top"><h3>Empowering Affected Individuals to Shape AI Fairness Assessments: Processes, Criteria, and Tools</h3><span class="entry-date">2026</span></div><span class="entry-meta">arXiv:2602.06984 | Preprint; TOCHI manuscript submitted, not accepted</span><p>L. Luo, S. Ghanta, Y. Nakao, M. Chollet and S. Stumpf. An approach for people affected by AI systems to express values and shape customised fairness assessment metrics.</p><a class="pill-link" href="https://arxiv.org/abs/2602.06984" target="_blank" rel="noopener noreferrer">Read preprint </a></div>
+        <div class="resume-entry"><h3>Selected submitted manuscripts</h3><span class="entry-meta">Submissions recorded in the October 2026 draft CV; not yet accepted</span><p><strong>From Feasibility to Adoption:</strong> Perceptions of Sustainable Software Engineering Tools and Practices - submitted to ICSE 2027 SEIP.</p><p><strong>When Sustainability Meets Practice:</strong> Challenges of Sustainability-Oriented Software Process Improvement in Industry - submitted to ICSE 2027 SEIP.</p><p><strong>Use of Generative AI for Sustainable Software Requirements Elicitation:</strong> An Exploratory Comparison of Students and Industry Practitioners - submitted to the Automated Software Engineering journal.</p><p><strong>What Changes When the Story Changes?</strong> Governing Revision in Multimodal AI Video Authoring - submitted to ACM CHI.</p></div>
+        <p>For an evolving list, see my <a href="https://scholar.google.com/citations?user=WJTqjlUAAAAJ" target="_blank" rel="noopener noreferrer">Google Scholar</a> and <a href="https://orcid.org/0009-0003-1110-055X" target="_blank" rel="noopener noreferrer">ORCID</a> profiles.</p>
+      </section>
+
+      <section id="teaching"><h2>Teaching & educational innovation</h2><p class="section-lead">Connecting practical software engineering education with accessible, carefully evaluated learning tools.</p>
+        <div class="resume-entry"><div class="entry-top"><h3>Professional Software Development</h3><span class="entry-date">Current appointment</span></div><span class="entry-meta">University of Glasgow | Teaching staff</span><p>Developing and updating material, delivering lectures and supporting students as they tackle software engineering practice.</p></div>
+        <div class="resume-entry"><h3>Graduate Teaching Assistant</h3><span class="entry-meta">University of Glasgow | Approx. three years across recurring courses</span><p>Supported Programming Systems Development, Data Product Engineering and Software Product Release Management, along with shorter appointments in cybersecurity and Human-Centred Design.</p></div>
+        <div class="resume-entry"><h3>Research Communication & WordPress</h3><span class="entry-meta">Guest teaching, 2024-2025 | Mentorship in 2026</span><p>Delivered teaching on public-facing research communication, websites and ethical disclosure of information online, helping students create their own WordPress sites.</p></div>
+        <div class="resume-entry"><h3>Course-grounded AI Virtual Teaching Assistant</h3><span class="entry-meta">Independently developed | Student pilot ongoing</span><p>Built a retrieval-augmented generation assistant using supplied course materials and an open-source language model. The pilot is in progress; student learning outcomes have not yet been formally evaluated.</p></div>
+        <div class="resume-entry"><h3>Automated AI-supported lecture production</h3><span class="entry-meta">Independently developed | Student pilot ongoing</span><p>Created a workflow for lecture videos from slides and scripts, including synthetic narration, an AI presenter, automated composition and condensed or multilingual variations. Educational impact remains to be evaluated.</p></div>
+      </section>
+
+      <section id="education"><h2>Education</h2>
+        <div class="resume-entry"><div class="entry-top"><h3>PhD in Computing Science</h3><span class="entry-date">Feb 2024 - present</span></div><span class="entry-meta">University of Glasgow | Expected submission August 2027</span><p>Working thesis: <em>Introducing Sustainability into Software Engineering Teams: Sustainability Mindsets, Practice and Culture.</em> Supervisors: Dr Peggy Gregory and Dr Gül Çalıklı. Barclays-funded studentship.</p></div>
+        <div class="resume-entry"><div class="entry-top"><h3>MSc in Data Science (Merit)</h3><span class="entry-date">2022 - 2023</span></div><span class="entry-meta">University of Glasgow</span><p>Studied data science, machine learning, information retrieval and research methods. Recipient of an Indian Government scholarship for tuition and accommodation.</p></div>
+        <div class="resume-entry"><div class="entry-top"><h3>BTech in Computer Science and Engineering</h3><span class="entry-date">2016 - 2020</span></div><span class="entry-meta">Jawaharlal Nehru Technological University, India</span><p>CGPA: 8.0/10. Recipient of an Indian Government partial tuition scholarship.</p></div>
+      </section>
+
+      <section id="engineering"><h2>Professional software engineering</h2>
+        <div class="resume-entry"><div class="entry-top"><h3>Software Developer</h3><span class="entry-date">Jun 2023 - present</span></div><span class="entry-meta">Glasgow University Software Service | University of Glasgow</span><p>Developing and maintaining software for researchers and university stakeholders; translating diverse requirements into practical research-support and operational applications.</p></div>
+        <div class="resume-entry"><div class="entry-top"><h3>Systems Engineer</h3><span class="entry-date">Oct 2020 - May 2022</span></div><span class="entry-meta">Tata Consultancy Services | North American banking client</span><p>Worked on backend applications and APIs, requirements discussions, Scrum activities, code review, deployment preparation and technical collaboration.</p></div>
+        <div class="resume-entry"><div class="entry-top"><h3>Software Intern</h3><span class="entry-date">May - Jul 2020</span></div><span class="entry-meta">Airports Authority of India | Vijayawada International Airport</span><p>Contributed to an inventory-management web application and early work on an automated parking-ticketing system.</p></div>
+        <div class="resume-entry"><div class="entry-top"><h3>Undergraduate Research Student</h3><span class="entry-date">Jan 2018 - Apr 2020</span></div><span class="entry-meta">Usha Rama College Research Centre, India</span><p>Worked on multidisciplinary prototypes involving IoT, robotics, AI and web/mobile applications.</p></div>
+      </section>
+
+      <section id="service"><h2>Service & mentorship</h2>
+        <div class="resume-entry"><h3>EASE 2026 - Web Co-Chair & Sustainability Corner organiser</h3><p>Supported the conference website and organised a Sustainability Corner where attendees could exchange questions, opportunities and trade-offs in software engineering sustainability.</p></div>
+        <div class="resume-entry"><h3>ICSE 2027 - sustainability analysis support</h3><p>Supporting the Sustainability Co-Chairs by preparing environmental-impact estimates for conference planning. This is an analytical support role, not a co-chair appointment.</p></div>
+        <div class="resume-entry"><h3>Sustainable Software Engineering card-game workshop - SICSA</h3><p>Designed and facilitated a role-playing discussion game that prompts participants to debate and revise positions as sustainability scenarios change.</p></div>
+        <div class="resume-entry"><h3>Postgraduate research mentorship</h3><p>Supporting MSc dissertation students and mentoring a PhD research project on AI-assisted visual storytelling. The PhD collaboration is project mentorship, not formal degree supervision.</p></div>
+      </section>
+
+      <section id="contact"><h2>Let's talk</h2><p class="section-lead">I'm interested in collaborations around sustainable software engineering, human-centred AI and practical ways to help teams build more responsible software.</p><p><strong>Email:</strong> <a href="mailto:y.ghanta.1@research.gla.ac.uk">y.ghanta.1@research.gla.ac.uk</a><br /><strong>Location:</strong> Glasgow, United Kingdom<br /><strong>Institution:</strong> University of Glasgow</p><a class="pill-link" href="https://github.com/yasat" target="_blank" rel="noopener noreferrer">GitHub </a><a class="pill-link" href="https://scholar.google.com/citations?user=WJTqjlUAAAAJ" target="_blank" rel="noopener noreferrer">Google Scholar </a><a class="pill-link" href="https://orcid.org/0009-0003-1110-055X" target="_blank" rel="noopener noreferrer">ORCID </a></section>
+    </article>
+  </main>
+  <footer class="resume-footer">Copyright 2026 Satwik Ghanta | <a href="game.html?start=1">Try the interactive driving game</a> | <a href="mailto:y.ghanta.1@research.gla.ac.uk">Get in touch</a></footer>
 </body>
 </html>

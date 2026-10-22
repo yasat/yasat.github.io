@@ -20,14 +20,14 @@ window.RESUME_ZONES = [
         "url": null
       },
       {
-        "title": "Financial Services Case Study",
+        "title": "Industry Sustainability Study",
         "meta": "ESEM 2025",
         "description": "Industry research on developer and management perspectives, competing priorities and barriers to sustainability adoption.",
         "linkLabel": "Read paper",
         "url": "https://doi.org/10.1109/ESEM64174.2025.00022"
       },
       {
-        "title": "Sustainability Tools",
+        "title": "Tool Feasibility in Practice",
         "meta": "FSE 2026",
         "description": "Examining the feasibility of introducing sustainability tools in real engineering environments, including data access and the practicality of outputs.",
         "linkLabel": "Read paper",
@@ -55,30 +55,30 @@ window.RESUME_ZONES = [
     "summary": "Research outputs across empirical software engineering, educational AI and participatory AI fairness.",
     "items": [
       {
-        "title": "FSE 2026 · Industry",
+        "title": "Practical Sustainability Tools",
         "meta": "Published",
-        "description": "Practical Feasibility of Sustainable Software Engineering Tools and Techniques. First-author industry-track paper.",
+        "description": "Practical Feasibility of Sustainable Software Engineering Tools and Techniques. Published, first author. A study of practical deployment and usefulness of sustainability-oriented software tools.",
         "linkLabel": "Publisher DOI",
         "url": "https://doi.org/10.1145/3803437.3805254"
       },
       {
-        "title": "ESEM 2025",
+        "title": "Sustainability in FinServ Teams",
         "meta": "Published",
-        "description": "Perspectives, Needs and Challenges for Sustainable Software Engineering Teams: A FinServ Case Study. First-author empirical study.",
+        "description": "Perspectives, Needs and Challenges for Sustainable Software Engineering Teams: A FinServ Case Study. Published, first author. An empirical study in financial services.",
         "linkLabel": "Publisher DOI",
         "url": "https://doi.org/10.1109/ESEM64174.2025.00022"
       },
       {
-        "title": "CSEE&T 2026",
+        "title": "LLMs for Agile Coaching",
         "meta": "Accepted",
-        "description": "Evaluating the Usefulness of Large Language Models in Learning Agile Coaching. First-author paper; accepted for publication.",
+        "description": "Evaluating the Usefulness of Large Language Models in Learning Agile Coaching. First-author paper, accepted for publication, not yet described as published.",
         "linkLabel": null,
         "url": null
       },
       {
-        "title": "Participatory AI Fairness",
+        "title": "Shaping AI Fairness Assessments",
         "meta": "Preprint / journal submitted",
-        "description": "Empowering Affected Individuals to Shape AI Fairness Assessments: Processes, Criteria, and Tools. Available as an arXiv preprint.",
+        "description": "Empowering Affected Individuals to Shape AI Fairness Assessments: Processes, Criteria, and Tools. Available as an arXiv preprint; journal manuscript submitted, not accepted.",
         "linkLabel": "View preprint",
         "url": "https://arxiv.org/abs/2602.06984"
       }
@@ -98,7 +98,7 @@ window.RESUME_ZONES = [
     "items": [
       {
         "title": "Professional Software Development",
-        "meta": "Teaching staff · University of Glasgow",
+        "meta": "Teaching staff | University of Glasgow",
         "description": "Designing course materials and delivering lectures, recordings and support for practical software engineering.",
         "linkLabel": null,
         "url": null
@@ -118,8 +118,8 @@ window.RESUME_ZONES = [
         "url": null
       },
       {
-        "title": "Research & WordPress",
-        "meta": "Guest teaching · 2024–2025",
+        "title": "Research Communication",
+        "meta": "Guest teaching | 2024-2025",
         "description": "Delivered interdisciplinary teaching on public research communication, WordPress and ethical online disclosure; mentored a colleague in 2026.",
         "linkLabel": null,
         "url": null
@@ -139,29 +139,29 @@ window.RESUME_ZONES = [
     "summary": "Engineering and research software experience across universities, enterprise banking and early industry projects.",
     "items": [
       {
-        "title": "University Software Service",
-        "meta": "Software Developer · 2023–present",
+        "title": "Research Software Developer",
+        "meta": "Software Developer | 2023-present",
         "description": "Developing applications and research-support software for university stakeholders, translating requirements into usable systems.",
         "linkLabel": null,
         "url": null
       },
       {
         "title": "Tata Consultancy Services",
-        "meta": "Systems Engineer · 2020–2022",
+        "meta": "Systems Engineer | 2020-2022",
         "description": "Worked on backend applications and APIs for a North American banking client, with Scrum coordination, reviews and deployment preparation.",
         "linkLabel": null,
         "url": null
       },
       {
         "title": "Airports Authority of India",
-        "meta": "Software Intern · 2020",
+        "meta": "Software Intern | 2020",
         "description": "Contributed to an inventory-management web application and early work on automated parking ticketing.",
         "linkLabel": null,
         "url": null
       },
       {
-        "title": "Undergraduate Research",
-        "meta": "2018–2020",
+        "title": "Early Research Prototypes",
+        "meta": "2018-2020",
         "description": "Explored IoT, robotics, AI and web/mobile prototypes at Usha Rama College Research Centre.",
         "linkLabel": null,
         "url": null
@@ -195,14 +195,14 @@ window.RESUME_ZONES = [
         "url": null
       },
       {
-        "title": "LLMs for Agile Coaching",
-        "meta": "CSEE&T 2026 · accepted",
+        "title": "Agile Coaching with LLMs",
+        "meta": "CSEE&T 2026 | accepted",
         "description": "Research evaluating how LLMs respond to practical Agile-coaching situations used in software engineering education.",
         "linkLabel": null,
         "url": null
       },
       {
-        "title": "AnimWeave & AI Fairness",
+        "title": "Creative AI and Fairness",
         "meta": "Research collaboration",
         "description": "Research on creator control during AI video authoring, and on involving affected people in shaping fairness assessment.",
         "linkLabel": null,
@@ -223,22 +223,22 @@ window.RESUME_ZONES = [
     "summary": "A path from computer science and engineering to data science and a doctorate in empirical software engineering.",
     "items": [
       {
-        "title": "PhD · Computing Science",
-        "meta": "University of Glasgow · 2024–present",
+        "title": "PhD in Computing Science",
+        "meta": "University of Glasgow | 2024-present",
         "description": "Researching sustainability mindsets, practice and culture in software engineering teams. Expected thesis submission: August 2027.",
         "linkLabel": null,
         "url": null
       },
       {
-        "title": "MSc · Data Science",
-        "meta": "University of Glasgow · 2022–2023",
+        "title": "MSc in Data Science",
+        "meta": "University of Glasgow | 2022-2023",
         "description": "Graduated with Merit; postgraduate study in data science, machine learning and information retrieval.",
         "linkLabel": null,
         "url": null
       },
       {
-        "title": "BTech · Computer Science",
-        "meta": "JNTU · 2016–2020",
+        "title": "BTech in Computer Science",
+        "meta": "JNTU | 2016-2020",
         "description": "Undergraduate degree in Computer Science and Engineering; CGPA 8.0/10.",
         "linkLabel": null,
         "url": null
@@ -265,7 +265,7 @@ window.RESUME_ZONES = [
     "summary": "Creating research conversations, teaching experiences and spaces for participation within the software engineering community.",
     "items": [
       {
-        "title": "EASE 2026",
+        "title": "Sustainability Corner",
         "meta": "Web Co-Chair / organiser",
         "description": "Served as Web Co-Chair and organised the Sustainability Corner to surface questions, trade-offs and ideas from conference attendees.",
         "linkLabel": null,
@@ -279,7 +279,7 @@ window.RESUME_ZONES = [
         "url": null
       },
       {
-        "title": "ICSE 2027",
+        "title": "Conference Impact Analysis",
         "meta": "Sustainability analysis support",
         "description": "Providing environmental-impact estimates and sustainability-related calculations for conference planning.",
         "linkLabel": null,

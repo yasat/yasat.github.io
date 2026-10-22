@@ -10,6 +10,8 @@
   const ctx = canvas.getContext('2d', {alpha:false});
   const map = $('cityMap');
   const mapCtx = map.getContext('2d');
+  const miniMap = $('cityMiniMap');
+  const miniCtx = miniMap.getContext('2d');
   const xy = [
     [-400,400], [0,400], [400,400], [-400,0],
     [400,0], [-400,-400], [0,-400], [400,-400]
@@ -19,10 +21,10 @@
   const roadCoords = [-600,-200,200,600];
   const items = cityZones.flatMap(zone => zone.items.map((item,j) => {
     const positions = [
-      {x:zone.cx,z:zone.cz-151,side:'south'},
-      {x:zone.cx+151,z:zone.cz,side:'east'},
-      {x:zone.cx,z:zone.cz+151,side:'north'},
-      {x:zone.cx-151,z:zone.cz,side:'west'}
+      {x:zone.cx,z:zone.cz-120,side:'south'},
+      {x:zone.cx+120,z:zone.cz,side:'east'},
+      {x:zone.cx,z:zone.cz+120,side:'north'},
+      {x:zone.cx-120,z:zone.cz,side:'west'}
     ];
     return { ...item, ...positions[j],zone,index:zone.index*4+j,num:zone.index*4+j+1 };
   }));
@@ -44,7 +46,12 @@
   const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
   const distance = (a,b,c,d) => Math.hypot(a-c,b-d);
   const ground = [], solids = [], signposts = [];
-  function quad(collection, v, color, stroke=null) {collection.push({verts:v,color,stroke});}
+  function quad(collection, v, color, stroke=null) {
+    const n=v.length;
+    collection.push({verts:v,color,stroke,
+      cx:v.reduce((sum,pt)=>sum+pt[0],0)/n,
+      cz:v.reduce((sum,pt)=>sum+pt[2],0)/n});
+  }
   function plane(collection,x,z,w,d,y,color) {
     quad(collection, [[x-w/2,y,z-d/2],[x+w/2,y,z-d/2],[x+w/2,y,z+d/2],[x-w/2,y,z+d/2]],color);
   }
@@ -59,99 +66,168 @@
     quad(collection,[C,D,I,G],color);
     quad(collection,[D,A,E,I],colorHex(color,.82));
   }
+  // Small, detailed architecture rather than untextured perimeter cubes.
+  function facadeQuad(points,color,side=0,bx=0,bz=0) {
+    quad(solids,points,color);
+    const face=solids[solids.length-1];
+    face.side=side;face.bx=bx;face.bz=bz;
+  }
   function tree(x,z,n) {
-    addBox(solids,x,1,z,5,19,5,'#7e8a68');
-    addBox(solids,x,17,z,27,24,28, n%3?'#76b98a':'#5bab8d');
-    addBox(solids,x,35,z,19,12,19,'#99d0a2');
+    addBox(solids,x,0,z,3,16,3,'#806b55');
+    addBox(solids,x,14,z,22,22,22,n%3?'#549b78':'#347f69');
+    addBox(solids,x,28,z,16,12,16,'#85c199');
+    plane(ground,x,z,17,17,.62,'#a4bd97');
+  }
+  function lamp(x,z) {
+    addBox(solids,x,0,z,2,34,2,'#365a61');
+    addBox(solids,x,34,z,12,2,3,'#365a61');
+    addBox(solids,x+4,32,z,6,2,5,'#fff4c7');
+    plane(ground,x,z,7,7,.6,'#a9bdb5');
   }
   function building(x,z,w,d,h,color,index) {
-    addBox(solids,x,.8,z,w,h,d,color);
-    addBox(solids,x,h+.8,z,w+4,3,d+4,colorHex(color,.78));
-    // Repeated glass bands convey scale without external texture assets.
-    for(let y=15;y<h-7;y+=18) {
-      for(let v=-w/2+11;v<w/2-4;v+=16) {
-        addBox(solids,x+v,y,z+d/2+1,9,8,.6,index%2?'#c1edf1':'#7ab8bb');
-        addBox(solids,x+v,y,z-d/2-1,9,8,.6,'#a3dadd');
+    const id=index+Math.round(x*7+z*3), glass=['#84c3c6','#7eb1b8','#bedce0','#99c7c9'];
+    plane(ground,x+4,z+4,w+15,d+15,.56,'#b0b9b0');
+    addBox(solids,x,.75,z,w,h,d,color);
+    // A structural foundation and an overhanging, detailed parapet.
+    addBox(solids,x,.8,z,w+2,4,d+2,colorHex(color,.66));
+    addBox(solids,x,h+.75,z,w+4,3,d+4,colorHex(color,.63));
+    const rowCount=Math.max(2,Math.floor((h-15)/13));
+    const colX=Math.max(2,Math.floor((w-9)/12));
+    const colZ=Math.max(2,Math.floor((d-9)/12));
+    // Flat facade quads sit in front of each wall. They cannot become occluded
+    // behind the building by sorting an entire 3D window box as one object.
+    for(let floor=0;floor<rowCount;floor++) {
+      const y=11+floor*13;
+      const ledge=y-2;
+      facadeQuad([[x-w/2-.45,ledge,z+d/2+1.05],[x+w/2+.45,ledge,z+d/2+1.05],[x+w/2+.45,ledge+1,z+d/2+1.05],[x-w/2-.45,ledge+1,z+d/2+1.05]],colorHex(color,.65));
+      for(let j=0;j<colX;j++) {
+        const px=x-w/2+(j+.5)*w/colX, ww=Math.min(8.5,w/colX-3.2);
+        const tone=glass[Math.floor(rand(id+floor*13+j*23)*glass.length)];
+        for(const side of [-1,1]) {
+          const zz=z+side*(d/2+1.3);
+          facadeQuad([[px-ww/2,y,zz],[px+ww/2,y,zz],[px+ww/2,y+7.5,zz],[px-ww/2,y+7.5,zz]],tone,side*2,x,z);
+          facadeQuad([[px-.4,y,zz+side*.16],[px+.4,y,zz+side*.16],[px+.4,y+7.5,zz+side*.16],[px-.4,y+7.5,zz+side*.16]],'#e4f0e7',side*2,x,z);
+        }
       }
-      for(let v=-d/2+11;v<d/2-4;v+=16) {
-        addBox(solids,x+w/2+1,y,z+v,.6,8,9,'#91c8c9');
-        addBox(solids,x-w/2-1,y,z+v,.6,8,9,'#ccefe9');
-      }
-    }
-  }
-  function makeWorld() {
-    // Road grid, markings and off-road blocks are actual ground-plane polygons.
-    for(const g of roadCoords) {
-      for(let p=-840;p<840;p+=80) {
-        plane(ground,g,p+40,94,80,.09,'#687f89');
-        plane(ground,p+40,g,80,94,.12,'#687f89');
-        plane(ground,g-49,p+40,6,80,.4,'#f1e0c8');
-        plane(ground,g+49,p+40,6,80,.4,'#f1e0c8');
-        plane(ground,p+40,g-49,80,6,.4,'#f1e0c8');
-        plane(ground,p+40,g+49,80,6,.4,'#f1e0c8');
-      }
-      for(let p=-824;p<=820;p+=50) {
-        const inCrossing = roadCoords.some(t=>Math.abs(p-t)<70);
-        if (!inCrossing) {
-          plane(ground,g,p,2,26,.28,'#fff3ba');
-          plane(ground,p,g,26,2,.29,'#fff3ba');
+      for(let j=0;j<colZ;j++) {
+        const pz=z-d/2+(j+.5)*d/colZ, ww=Math.min(8.5,d/colZ-3.2);
+        for(const side of [-1,1]) {
+          const xx=x+side*(w/2+1.3);
+          facadeQuad([[xx,y,pz-ww/2],[xx,y,pz+ww/2],[xx,y+7.5,pz+ww/2],[xx,y+7.5,pz-ww/2]],glass[Math.floor(rand(id+floor*15+j*29+side)*4)],side,x,z);
+          facadeQuad([[xx+side*.16,y,pz-.4],[xx+side*.16,y,pz+.4],[xx+side*.16,y+7.5,pz+.4],[xx+side*.16,y+7.5,pz-.4]],'#d7ece9',side,x,z);
         }
       }
     }
-    // Pedestrian crossings at every intersection.
+    // Shopfront doors, glass awnings and rooftop machinery.
+    addBox(solids,x,1,z+d/2+1.6,13,14,1.2,'#275c67');
+    addBox(solids,x,13,z+d/2+6,24,2,11,index%2?'#cf9b6f':'#dfe9de');
+    addBox(solids,x,1,z-d/2-1.6,12,13,1.2,'#365f69');
+    addBox(solids,x,h+3,z,Math.min(18,w*.33),6,Math.min(18,d*.3),'#7a9695');
+    addBox(solids,x+w*.28,h+3,z-d*.22,9,3,9,'#6f8d8d');
+    // Visible window rhythm even on lower-rise blocks.
+    addBox(solids,x,h-1,z+d/2+1.3,w-6,1,1.4,'#f0e0bf');
+  }
+  function makeWorld() {
+    const asphalt='#465a65', curbs='#b7bcb6';
+    // Roadbed, pavements, verge and markings are grounded at different heights.
+    for (const v of roadCoords) {
+      // Short segments avoid losing entire roads to camera distance culling.
+      for(let pos=-825;pos<850;pos+=110) {
+        plane(ground,v,pos,106,110,.03,curbs);
+        plane(ground,pos,v,110,106,.04,curbs);
+        plane(ground,v,pos,96,110,.1,asphalt);
+        plane(ground,pos,v,110,96,.11,asphalt);
+        for(const side of [-1,1]) {
+          plane(ground,v+side*49,pos,2.4,110,.28,'#f0e8d4');
+          plane(ground,pos,v+side*49,110,2.4,.29,'#f0e8d4');
+        }
+      }
+      for(let pos=-825;pos<850;pos+=50) {
+        if(roadCoords.some(j=>Math.abs(pos-j)<70))continue;
+        plane(ground,v,pos,2,23,.35,'#ead9ab');
+        plane(ground,pos,v,23,2,.36,'#ead9ab');
+      }
+    }
+    // Crosswalks end at road edges and signs are placed on corner pavements.
     for(const x of roadCoords) for(const z of roadCoords) {
-      for(let q=-30;q<34;q+=10) {
-        plane(ground,x+q,z+62,5,17,.32,'#f9f4dc');
-        plane(ground,x+q,z-62,5,17,.32,'#f9f4dc');
-        plane(ground,x+62,z+q,17,5,.32,'#f9f4dc');
-        plane(ground,x-62,z+q,17,5,.32,'#f9f4dc');
+      for(let q=-33;q<=33;q+=11) {
+        plane(ground,x+q,z+57,5.6,13,.4,'#f5f1e7');
+        plane(ground,x+q,z-57,5.6,13,.4,'#f5f1e7');
+        plane(ground,x+57,z+q,13,5.6,.4,'#f5f1e7');
+        plane(ground,x-57,z+q,13,5.6,.4,'#f5f1e7');
       }
-      const nearby = cityZones.filter(a=>Math.abs(a.cx-x)<260&&Math.abs(a.cz-z)<260);
-      signposts.push({x:x+50,z:z+50,nearby});
-      addBox(solids,x+50,1,z+50,5,30,5,'#49766f');
-      addBox(solids,x+50,31,z+50,68,29,8,'#1d5e52');
-      addBox(solids,x+50,61,z+50,75,3,10,'#ffc386');
+      plane(ground,x,z,8,8,.27,'#50656e');
+      const near=cityZones.filter(a=>Math.abs(a.cx-x)<255&&Math.abs(a.cz-z)<255);
+      const sx=x+74,sz=z+74;
+      signposts.push({x:sx,z:sz,nearby:near});
+      plane(ground,sx,sz,16,16,.47,'#d6dbd2');
+      addBox(solids,sx,0,sz,2.6,27,2.6,'#365d58');
+      addBox(solids,sx,24,sz,38,13,3,'#205a57');
+      addBox(solids,sx,37,sz,40,2.2,4,'#ebb06c');
+      lamp(x-66,z-66);
     }
-    for (let index=0; index<9; index++) {
-      const x=(index%3-1)*400, z=(1-Math.floor(index/3))*400;
+    const palettes=['#b9cec9','#dab49c','#aaa8c5','#9fbbcd','#c8a6a3','#bcc8a2','#d7bc96','#a6cfbf'];
+    for(let index=0; index<9; index++) {
+      const x=(index%3-1)*400,z=(1-Math.floor(index/3))*400;
       const zone=cityZones.find(q=>q.cx===x&&q.cz===z);
-      const shade=zone?zone.tone:'#a9dcc1';
-      plane(ground,x,z,300,300,.26,'#e8ece2');
-      plane(ground,x,z,275,275,.37,colorHex(shade,1.02));
-      plane(ground,x,z,244,244,.42,'#e2efe0');
-      // Parked city centre and surrounding zones have distinct silhouettes.
+      // A setback of at least 47 city units separates every building from roads.
+      plane(ground,x,z,294,294,.32,'#d4d8d0');
+      plane(ground,x,z,282,282,.42,'#e8e4d9');
+      plane(ground,x,z,272,272,.48,zone?colorHex(zone.tone,.95):'#9bd6ba');
+      // Four narrow paths make an actual pedestrian court through the block.
+      plane(ground,x,z,27,282,.53,'#dfe1d7');
+      plane(ground,x,z,282,27,.54,'#dfe1d7');
       if(zone) {
-        const colors=['#90b9ad','#e5bb99','#b3a8ce','#a5bfd1','#d89d9d','#b6c998','#dcc28a','#9bc9c1'];
-        const base=colors[zone.index];
-        const b=[
-          [-55,-45,60,51,76], [61,47,51,59,63],
-          [-71,69,46,48,42], [76,-63,40,48,54],
-          [0,1,53,53,113]
-        ];
-        b.forEach(([bx,bz,bw,bd,bh],n)=>building(x+bx,z+bz,bw,bd,bh+(zone.index*11+n*7)%27,colorHex(base,.85+rand(zone.index*10+n)*.20),n));
-        for(const [tx,tz] of [[-125,-119],[123,-118],[-120,120],[122,120]]) tree(x+tx,z+tz,zone.index);
-      } else {
-        plane(ground,x,z,145,145,.47,'#b5dfc9');
-        addBox(solids,x,.6,z,75,22,75,'#74bda6');
-        addBox(solids,x,23,z,60,15,60,'#c4e2d2');
-        addBox(solids,x,39,z,43,30,43,'#3e9685');
-        addBox(solids,x,69,z,11,40,11,'#f3d09d');
-        for(let t=0;t<6;t++) {const a=t*Math.PI/3;tree(x+Math.cos(a)*116,z+Math.sin(a)*116,t);}
+        const c=palettes[zone.index];
+        const layouts=[[-70,-70,60,57,92], [70,-70,59,56,72],
+                       [-70,70,57,59,61], [70,70,58,59,112]];
+        layouts.forEach(([bx,bz,w,d,h],n)=>building(x+bx,z+bz,w,d,h+Math.floor(rand(index*19+n)*20),colorHex(c,.86+rand(index*10+n)*.19),index*6+n));
+        // Low civic building or research hub with a welcoming glass entrance.
+        building(x,z,49,49,43+zone.index%3*8,'#a8c7be',index*6+4);
+        for(const [tx,tz] of [[-113,-111],[113,-111],[-113,111],[113,111]])tree(x+tx,z+tz,zone.index);
+        // Bollards keep the four information boards completely on pedestrian land.
+        for (const b of items.filter(t=>t.zone.index===zone.index)) {
+          const flat=b.side==='south'||b.side==='north';
+          plane(ground,b.x,b.z,flat?61:17,flat?17:61,.65,'#f6e6c9');
+          for(const dir of [-1,1]) {
+            const px=b.x+(flat?dir*28:0),pz=b.z+(flat?0:dir*28);
+            addBox(solids,px,.55,pz,2.2,6,2.2,'#638780');
+          }
+        }
+      }else{
+        // Town square in the centre replaces the previous undetailed cubes.
+        plane(ground,x,z,200,200,.56,'#d8dfcf');
+        plane(ground,x,z,126,126,.61,'#b7d8c7');
+        addBox(solids,x,1,z,54,12,54,'#629f91');
+        addBox(solids,x,13,z,43,15,43,'#bddbd3');
+        addBox(solids,x,29,z,13,25,13,'#386d66');
+        for(let t=0;t<8;t++){const a=t*Math.PI/4;tree(x+Math.cos(a)*116,z+Math.sin(a)*116,t);}
       }
     }
-    // Low perimeter city skyline for depth.
-    for(let i=0;i<40;i++) {
-      const theta=i*Math.PI/20;
-      const x=Math.cos(theta)*1000,z=Math.sin(theta)*1000;
-      const h=40+rand(i+19)*105;
-      addBox(solids,x,0,z,60+rand(i)*30,h,60+rand(i*2)*30,i%3?'#a7c6b6':'#d5c7ac');
+    // Outer neighbourhoods prevent blank fields along the playable perimeter.
+    // Centres at +/-800 lie beyond the boundary roads but remain visible to drivers.
+    for(const gx of [-800,-400,0,400,800]) for(const gz of [-800,-400,0,400,800]) {
+      if(Math.abs(gx)<600 && Math.abs(gz)<600)continue;
+      plane(ground,gx,gz,292,292,.38,'#cedacb');
+      plane(ground,gx,gz,279,279,.44,'#e5ded2');
+      plane(ground,gx,gz,265,265,.49,'#bbd9c0');
+      for(const [k,[ox,oz]] of [[-73,-72],[74,-67],[-69,70],[72,76]].entries()) {
+        const tint=['#adbbb0','#c4b4a5','#a4bcc0','#dfba9d','#adbd9e'][(Math.abs(gx+gz)+k)%5];
+        building(gx+ox,gz+oz,50+rand(k+gx)*15,52+rand(k+gz)*12,
+          52+rand(k+gx+gz)*85,tint,116+(gx+800)/400*5+(gz+800)/400+k);
+      }
     }
-    // Support posts of the 32 full-information billboards.
-    items.forEach((b,i)=> {
-      addBox(solids,b.x-19,1,b.z,4,33,4,'#4b6c61');
-      addBox(solids,b.x+19,1,b.z,4,33,4,'#4b6c61');
-      plane(ground,b.x,b.z,87,33,.6,'#ecdfc6');
-    });
+    // Distant blocks remain recognisable as skyscrapers with patterned windows.
+    for(let i=0;i<22;i++) {
+      const theta=i*Math.PI/11,x=Math.cos(theta)*1020,z=Math.sin(theta)*1020;
+      building(x,z,48+rand(i)*25,45+rand(i+6)*27,55+rand(i+19)*110,i%3?'#b2c5bc':'#c9b9a6',i+90);
+    }
+    // All 32 billboard frames and legs live entirely inside their block boundary.
+    for(const b of items) {
+      const flat=b.side==='south'||b.side==='north';
+      if(flat)for(const dx of [-22,22])addBox(solids,b.x+dx,.65,b.z,2.6,17,2.6,'#43625c');
+      else for(const dz of [-22,22])addBox(solids,b.x,.65,b.z+dz,2.6,17,2.6,'#43625c');
+    }
   }
   makeWorld();
 
@@ -161,7 +237,7 @@
     dpr=Math.min(window.devicePixelRatio||1,1.6);
     canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    scale=Math.min(W*.92,H*1.26);
+    scale=Math.min(W*.88,H*1.08);
   }
   window.addEventListener('resize',resize);
   resize();
@@ -169,8 +245,8 @@
   function camera() {
     const c=state.car, fx=Math.sin(c.yaw),fz=Math.cos(c.yaw);
     // Raised third-person camera maintains enough view for a useful city map.
-    const px=c.x-fx*135,py=93,pz=c.z-fz*135;
-    let dx=fx*225,dy=-83,dz=fz*225;
+    const px=c.x-fx*208,py=119,pz=c.z-fz*208;
+    let dx=fx*310,dy=-114,dz=fz*310;
     const len=Math.hypot(dx,dy,dz);dx/=len;dy/=len;dz/=len;
     const horizontal=Math.hypot(dx,dz);
     const rx=dz/horizontal,rz=-dx/horizontal,ux=dy*rz,uy=horizontal,uz=-dy*rx;
@@ -197,8 +273,13 @@
     return b;
   }
   function renderFace(face) {
-    const vs=face.verts,centroid=vs.reduce((r,p)=>[r[0]+p[0]/vs.length,r[1]+p[1]/vs.length,r[2]+p[2]/vs.length],[0,0,0]);
-    if(Math.hypot(centroid[0]-cam.x,centroid[2]-cam.z)>960) return;
+    const vs=face.verts, dx=face.cx-cam.x, dz=face.cz-cam.z;
+    if(dx*dx+dz*dz>810000)return;
+    if(face.side) {
+      // Do not rasterise windows on the face of a building pointing away.
+      if(Math.abs(face.side)===1&&(cam.x-face.bx)*face.side<0)return;
+      if(Math.abs(face.side)===2&&(cam.z-face.bz)*face.side<0)return;
+    }
     const poly=clipped(vs);
     if(!poly) return;
     const mx=poly.reduce((s,p)=>s+p[2],0)/poly.length;
@@ -226,93 +307,113 @@
     if(lines.length===maxlines&&words.join(' ').length>lines.join(' ').length) lines[maxlines-1]=lines[maxlines-1].replace(/[ .,;:]*$/,'')+'...';
     return lines;
   }
+  function excerpt(str) {
+    // A concise, information-rich sentence rather than an overlong header.
+    const clean=str.replace(/\s+/g,' ').trim();
+    return clean.length>180?clean.slice(0,176).replace(/\s+\S*$/,'')+'...':clean;
+  }
   function addBillboard(b) {
-    if(distance(b.x,b.z,cam.x,cam.z)>820) return;
+    if(distance(b.x,b.z,cam.x,cam.z)>590)return;
     const rx=cam.rx,rz=cam.rz;
-    const panel=(halfWidth,y1,y2,color)=>quadDynamic([
-      [b.x-rx*halfWidth,y1,b.z-rz*halfWidth],
-      [b.x+rx*halfWidth,y1,b.z+rz*halfWidth],
-      [b.x+rx*halfWidth,y2,b.z+rz*halfWidth],
-      [b.x-rx*halfWidth,y2,b.z-rz*halfWidth]
-    ],color);
-    panel(44,25,81,'#31594e');
-    panel(41,29,78,b.zone.tone);
-    panel(41,69,78,'#214f48');
-    const p=pointScreen([b.x,56,b.z]);
-    const bl=pointScreen([b.x-rx*41,56,b.z-rz*41]);
-    const br=pointScreen([b.x+rx*41,56,b.z+rz*41]);
-    const top=pointScreen([b.x,78,b.z]);
-    const bottom=pointScreen([b.x,29,b.z]);
-    if(!p||!bl||!br||!top||!bottom)return;
-    let w=Math.abs(br.x-bl.x),h=Math.abs(bottom.y-top.y);
-    if(w<36||h<18)return;
-    faces.push({depth:p.z-1,draw:()=>{
-      const font=clamp(w/15,8,19);const x=p.x;
-      if(p.x<-w/2||p.x>W+w/2) return;
-      ctx.save();
-      // Text is drawn in front of a 3D-facing sign, retaining legibility while driving.
-      ctx.textAlign='center';ctx.fillStyle='#ffffff';ctx.font=`900 ${clamp(font*.67,8,11)}px Arial, sans-serif`;
-      if(h>55) ctx.fillText(`${String(b.num).padStart(2,'0')} / ${b.zone.short.toUpperCase()}`,x,top.y+clamp(h*.15,12,26));
-      ctx.fillStyle='#173f39';
-      if(h>40) {
-        const f=`900 ${font}px Arial, sans-serif`;
-        const lines=textLines(b.title,Math.max(30,w*.78),3,f);
-        ctx.font=f;const lh=font*1.15;
-        const yy=p.y+(h>80?0:font*.16)-(lines.length-1)*lh/2;
-        lines.forEach((line,i)=>ctx.fillText(line,x,yy+i*lh));
-      }else{ctx.font='900 9px Arial, sans-serif';ctx.fillText(b.title.slice(0,20),x,p.y+4);}
+    const top=pointScreen([b.x,47,b.z]);
+    const bottom=pointScreen([b.x,18,b.z]);
+    const left=pointScreen([b.x-rx*23.5,24,b.z-rz*23.5]);
+    const right=pointScreen([b.x+rx*23.5,24,b.z+rz*23.5]);
+    const center=pointScreen([b.x,30,b.z]);
+    if(!top||!bottom||!left||!right||!center)return;
+    const w=Math.abs(right.x-left.x),h=Math.abs(bottom.y-top.y);
+    if(w<47||h<30)return;
+    faces.push({depth:center.z-1,draw:()=>{
+      const x=center.x, y=top.y;
+      if(x< -w/2||x>W+w/2)return;
+      const t=clamp(w/18,8,15);
+      // One projected sign face keeps the cream panel intact at any camera angle.
+      ctx.save();ctx.fillStyle='#315e57';
+      ctx.beginPath();ctx.roundRect(x-w*.5-4,y-4,w+8,h+8,3);ctx.fill();
+      ctx.fillStyle='#fffaf0';ctx.fillRect(x-w*.5,y,w,h);
+      ctx.fillStyle='#24655c';ctx.fillRect(x-w*.5,y,w,h*.20);
+      ctx.fillStyle=b.zone.tone;ctx.fillRect(x-w*.5,y+h*.94,w,h*.06);
+      ctx.restore();
+      ctx.save();ctx.textAlign='left';ctx.textBaseline='top';
+      const pad=w*.085,l=x-w*.5+pad,inner=w-pad*2;
+      ctx.fillStyle='#f6fff5';ctx.font=`800 ${clamp(t*.62,7,10)}px Arial, sans-serif`;
+      if(h>38)ctx.fillText(`${String(b.num).padStart(2,'0')}  ${b.zone.short.toUpperCase()}`,l,y+Math.max(3,h*.065),inner);
+      ctx.fillStyle='#163b35';
+      const titleFont=`800 ${t}px Arial, sans-serif`;
+      const lines=textLines(b.title,inner,2,titleFont);
+      ctx.font=titleFont;let ty=y+h*.26;
+      for(const line of lines){ctx.fillText(line,l,ty,inner);ty+=t*1.15;}
+      const metaFont=clamp(t*.62,7.5,10);
+      if(h>66) {
+        ctx.fillStyle='#427566';ctx.font=`800 ${metaFont}px Arial, sans-serif`;
+        ctx.fillText(b.meta.slice(0,45),l,Math.max(ty+3,y+h*.53),inner);
+      }
+      if(h>88){
+        ctx.fillStyle='#425b52';const fs=clamp(t*.62,7,10);
+        const descLines=textLines(excerpt(b.description),inner,3,`500 ${fs}px Arial, sans-serif`);
+        ctx.font=`500 ${fs}px Arial, sans-serif`;
+        descLines.forEach((line,i)=>ctx.fillText(line,l,y+h*.67+i*fs*1.18,inner));
+      }
+      if(h>105){ctx.fillStyle='#2b7568';ctx.font='800 8px Arial, sans-serif';ctx.fillText('PARK NEARBY TO READ MORE',l,y+h*.88,inner);}
       ctx.restore();
     }});
   }
   function quadDynamic(v,color) {renderFace({verts:v,color});}
   function addLabels() {
-    // Crossing signs. Each one lists the actual neighbourhoods adjoining that junction.
     signposts.forEach(s=>{
-      if(distance(s.x,s.z,cam.x,cam.z)>560)return;
-      const p=pointScreen([s.x,48,s.z]);
-      if(!p)return;
-      faces.push({depth:p.z-23,draw:()=>{
-        const px=pointScreen([s.x-28,48,s.z]);const qx=pointScreen([s.x+28,48,s.z]);
-        const sz=px&&qx?Math.abs(qx.x-px.x):95;
-        if(sz<30||p.x<0||p.x>W)return;
-        ctx.save();ctx.fillStyle='#fffde9';ctx.textAlign='center';
-        const font=clamp(sz/9,7,11);ctx.font=`900 ${font}px Arial, sans-serif`;
-        ctx.fillText('WAYPOINT',p.x,p.y-3);
-        let label=s.nearby.slice(0,2).map(n=>{
-          const dx=n.cx-(s.x-50), dz=n.cz-(s.z-50);
-          const road=Math.abs(dx)>=Math.abs(dz)?(dx<0?'WEST':'EAST'):(dz<0?'SOUTH':'NORTH');
-          return `${road} ${n.short.toUpperCase()}`;
-        }).join(' / ')||'CITY CENTRE';
-        ctx.font=`800 ${clamp(font*.8,6,9)}px Arial, sans-serif`;
-        if(label.length>33)label=label.slice(0,31)+'..';
-        ctx.fillText(label,p.x,p.y+font*1.2);ctx.restore();
+      if(distance(s.x,s.z,cam.x,cam.z)>420)return;
+      const p=pointScreen([s.x,31,s.z]);
+      if(!p||p.z<20)return;
+      const left=pointScreen([s.x-18,31,s.z]);const right=pointScreen([s.x+18,31,s.z]);
+      if(!left||!right)return;
+      const w=Math.abs(right.x-left.x);
+      if(w<30||w>440)return;
+      faces.push({depth:p.z-2,draw:()=>{
+        ctx.save();ctx.fillStyle='#fffbed';ctx.textAlign='center';
+        ctx.font=`900 ${clamp(w/8,8,12)}px Arial, sans-serif`;
+        ctx.fillText('DISTRICTS',p.x,p.y-5);
+        const adjacent=s.nearby.slice(0,2).map(z=>{
+          const dx=z.cx-(s.x-74),dz=z.cz-(s.z-74);
+          const heading=Math.abs(dx)>Math.abs(dz)?(dx>0?'E':'W'):(dz>0?'N':'S');
+          return `${heading}  ${z.short.toUpperCase()}`;
+        });
+        ctx.font=`800 ${clamp(w/11,6.5,9)}px Arial, sans-serif`;
+        for(let i=0;i<adjacent.length;i++)ctx.fillText(adjacent[i],p.x,p.y+7+i*10,Math.max(20,w*.87));
+        ctx.restore();
       }});
     });
     cityZones.forEach(z=>{
-      if(distance(z.cx,z.cz,cam.x,cam.z)>770)return;
-      const p=pointScreen([z.cx,170,z.cz]);
-      if(p && p.z>80 && p.z<700){faces.push({depth:p.z-1,draw:()=>{
-        ctx.save();ctx.textAlign='center';ctx.font='900 12px Arial, sans-serif';
-        const txt=z.short.toUpperCase();const tw=ctx.measureText(txt).width+25;
-        ctx.fillStyle='#fffcf0e9';ctx.strokeStyle='#a6c6ab';ctx.lineWidth=1;
-        ctx.beginPath();ctx.roundRect(p.x-tw/2,p.y-17,tw,25,6);ctx.fill();ctx.stroke();
-        ctx.fillStyle='#255a4c';ctx.fillText(txt,p.x,p.y);ctx.restore();
+      if(distance(z.cx,z.cz,cam.x,cam.z)>630)return;
+      const p=pointScreen([z.cx,150,z.cz]);
+      if(p&&p.z>170&&p.z<560){faces.push({depth:p.z-1,draw:()=>{
+        ctx.save();ctx.textAlign='center';ctx.font='800 10px Arial, sans-serif';
+        const txt=z.short.toUpperCase(),tw=ctx.measureText(txt).width+22;
+        ctx.fillStyle='#fffaf0ed';ctx.strokeStyle='#a7c8b9';ctx.lineWidth=1;
+        ctx.beginPath();ctx.roundRect(p.x-tw/2,p.y-16,tw,23,6);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#235848';ctx.fillText(txt,p.x,p.y-1);ctx.restore();
       }});}
     });
   }
   function addCar() {
-    const c=state.car;
-    const f=[];
-    const bx=c.x,bz=c.z;
-    addBox(f,bx,2,bz,23,11,45,'#f59365',c.yaw);
-    addBox(f,bx,13,bz-2*Math.cos(c.yaw),19,9,24,'#f8d5ae',c.yaw);
-    const shift=(side,front)=>({x:bx+side*Math.cos(c.yaw)+front*Math.sin(c.yaw),z:bz-side*Math.sin(c.yaw)+front*Math.cos(c.yaw)});
-    for(const side of [-14,14]) for(const front of [-15,15]) {
-      const t=shift(side,front);addBox(f,t.x,3,t.z,5,8,12,'#293f42',c.yaw);
-    }
-    for(const side of [-7,7]) {
-      let t=shift(side,23);addBox(f,t.x,7,t.z,5,4,1,'#fff9d2',c.yaw);
-      t=shift(side,-23);addBox(f,t.x,7,t.z,5,3,1,'#cf4f45',c.yaw);
+    const c=state.car,f=[],bx=c.x,bz=c.z;
+    const put=(side,forward,y,w,h,d,color)=>{
+      const x=bx+side*Math.cos(c.yaw)+forward*Math.sin(c.yaw);
+      const z=bz-side*Math.sin(c.yaw)+forward*Math.cos(c.yaw);
+      addBox(f,x,y,z,w,h,d,color,c.yaw);
+    };
+    // Subcompact proportions relative to a 96-unit road. Detailed cabin,
+    // windscreen, bumpers, brake lights and four real wheel shapes.
+    put(0,0,3,17,7,32,'#ef865a');
+    put(0,-4,10,14,7,19,'#eaa780');
+    put(0,2,11,14.3,3,10,'#376777');
+    put(0,-10,8,14,3,5,'#376777');
+    put(0,15.5,3,18,2,2,'#eccab0');
+    put(0,-16,4,18,2,2,'#45636b');
+    for(const side of [-9.5,9.5]) for(const forward of [-10.5,10.5])
+      put(side,forward,1.5,3.3,6.5,7.5,'#23343d');
+    for(const side of [-5.7,5.7]){
+      put(side,15.8,6,3.2,1.6,1.4,'#fff5cd');
+      put(side,-15.8,6,3.2,1.6,1.4,'#b73f40');
     }
     f.forEach(renderFace);
   }
@@ -429,7 +530,7 @@
   }
   function updateNearby() {
     const {billboard,dist}=getClosestBillboard();
-    state.nearest=dist<107?billboard:null;
+    state.nearest=dist<91?billboard:null;
     const parked=Math.abs(state.car.speed)<6;
     const ready=!!state.nearest&&parked;
     $('cityReadButton').disabled=!ready;
@@ -444,7 +545,7 @@
     }
   }
   function openBillboard(b,fromMenu=false) {
-    if(!b || (!fromMenu&&(distance(b.x,b.z,state.car.x,state.car.z)>112||Math.abs(state.car.speed)>7)))return;
+    if(!b || (!fromMenu&&(distance(b.x,b.z,state.car.x,state.car.z)>96||Math.abs(state.car.speed)>7)))return;
     detailsFocus=document.activeElement;
     state.detail=b;state.paused=true;state.key={};state.car.speed=0;
     state.discovered.add(b.index);
@@ -469,7 +570,10 @@
   function toggleMap(force) {
     const open=typeof force==='boolean'?force:!$('citySidebar').classList.contains('open');
     $('citySidebar').classList.toggle('open',open);
+    $('citySidebar').inert=!open;
     $('cityMenuButton').setAttribute('aria-expanded',String(open));
+    if(open) $('citySidebarClose').focus({preventScroll:true});
+    else $('cityMenuButton').focus({preventScroll:true});
   }
   function mapDraw() {
     const c=mapCtx, mw=map.width,mh=map.height;
@@ -490,6 +594,7 @@
     });
     const [px,py]=project(state.car.x,state.car.z);c.save();c.translate(px,py);c.rotate(state.car.yaw);
     c.fillStyle='#f47f56';c.strokeStyle='#fffbe9';c.lineWidth=2;c.beginPath();c.moveTo(0,-10);c.lineTo(-7,8);c.lineTo(7,8);c.closePath();c.fill();c.stroke();c.restore();
+    miniCtx.drawImage(map,0,0,miniMap.width,miniMap.height);
   }
   function driving(dt) {
     const key=state.key,c=state.car;
@@ -498,8 +603,8 @@
     const left=key.left||key.ArrowLeft||key.a||key.A;
     const right=key.right||key.ArrowRight||key.d||key.D;
     const brake=key.brake||key[' ']||key.Space;
-    if(throttle)c.speed=Math.min(155,c.speed+125*dt);
-    if(reverse)c.speed=Math.max(-70,c.speed-165*dt);
+    if(throttle)c.speed=Math.min(125,c.speed+112*dt);
+    if(reverse)c.speed=Math.max(-57,c.speed-140*dt);
     if(!throttle&&!reverse)c.speed*=Math.pow(.987,dt*60);
     if(brake)c.speed*=Math.pow(.77,dt*60);
     if(Math.abs(c.speed)<.23)c.speed=0;
@@ -511,17 +616,19 @@
     const nx=clamp(c.x+Math.sin(c.yaw)*c.speed*dt,-811,811);
     const nz=clamp(c.z+Math.cos(c.yaw)*c.speed*dt,-811,811);
     // Buildings are solid. Sidewalks and streets remain driveable near signs.
-    const solid = cityZones.some(z=>Math.abs(nx-z.cx)<112&&Math.abs(nz-z.cz)<112)
-      || (Math.abs(nx)<99&&Math.abs(nz)<99);
+    const solid = cityZones.some(z=> {
+      const dx=Math.abs(nx-z.cx),dz=Math.abs(nz-z.cz);
+      return (dx<104&&dz<104) || (dx<118&&dz<116 && (dx>35&&dz>35));
+    }) || (Math.abs(nx)<39&&Math.abs(nz)<39);
     if(solid){c.speed*=-.28;}else{c.x=nx;c.z=nz;}
     $('citySpeed').textContent=String(Math.round(Math.abs(c.speed)*.72)).padStart(2,'0');
     if(!state.detail){
       const {billboard,dist}=getClosestBillboard();
-      if(billboard&&dist<95&&Math.abs(c.speed)<3&&state.ridden&&state.lastOpened!==billboard.index){
+      if(billboard&&dist<86&&Math.abs(c.speed)<3&&state.ridden&&state.lastOpened!==billboard.index){
         state.parking+=dt;
-        if(state.parking>1.5){state.lastOpened=billboard.index;openBillboard(billboard);}
-      }else if(dist>112||Math.abs(c.speed)>8){state.parking=0;}
-      if(dist>145)state.lastOpened=-1;
+        if(state.parking>2.2){state.lastOpened=billboard.index;openBillboard(billboard);}
+      }else if(dist>100||Math.abs(c.speed)>8){state.parking=0;}
+      if(dist>115)state.lastOpened=-1;
     }
   }
   let uiTimer=0;
@@ -539,6 +646,7 @@
     $('cityIntro').classList.add('hidden');
     canvas.focus({preventScroll:true});
   }
+  $('citySidebar').inert=true;
   addDistrictNav();updateNearby();routing();mapDraw();
   $('cityStart').addEventListener('click',start);
   $('cityReadButton').addEventListener('click',()=>openBillboard(state.nearest));
@@ -548,12 +656,13 @@
   $('citySidebarClose').addEventListener('click',()=>toggleMap(false));
   $('cityReset').addEventListener('click',()=>{state.car={x:-200,z:-720,yaw:0,speed:0};state.parking=0;state.ridden=false;});
   $('cityDetail').addEventListener('click',e=>{if(e.target===$('cityDetail'))closeBillboard();});
-  const known=['w','W','s','S','a','A','d','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','e','E','Escape'];
+  const known=['w','W','s','S','a','A','d','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','e','E','m','M','Escape'];
   document.addEventListener('keydown',e=>{
     if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
     if(known.includes(e.key)&&!(e.altKey||e.ctrlKey||e.metaKey)){
       if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();
       if(e.key==='Escape'){if(state.detail)closeBillboard();else toggleMap(false);return;}
+      if((e.key==='m'||e.key==='M')&&!state.detail){toggleMap();return;}
       if(state.detail)return;
       if(e.key==='e'||e.key==='E'){openBillboard(state.nearest);return;}
       state.key[e.key]=true;

@@ -40,12 +40,16 @@
         <span id="cityWaypointRoute">Follow the road signs to explore</span><span class="city-crossing" id="cityJunctionNearby">Roads nearby lead to each area.</span>
       </section>
 
-      <aside class="city-sidebar" id="citySidebar" aria-label="City map and district navigation">
+      <aside class="city-minimap" aria-label="Live city overview">
+        <span>LIVE CITY MAP</span><canvas id="cityMiniMap" width="300" height="220" aria-label="Small map of the city and your position"></canvas>
+      </aside>
+
+      <aside class="city-sidebar" id="citySidebar" inert aria-label="City map and district navigation">
         <div class="city-sidebar-top">
           <div><span class="city-overline">YOUR FIELD GUIDE</span><h1>The research<br /><em>city map.</em></h1></div>
           <button class="city-sidebar-close" id="citySidebarClose" aria-label="Close city map" type="button">Close</button>
         </div>
-        <p>Pick a neighbourhood and follow its waypoint. Stop near a billboard to read the complete story.</p>
+        <p>Choose a district, follow its road signs, and park beside a billboard to read it. The map is optional.</p>
         <canvas id="cityMap" width="300" height="220" aria-label="Map with nine city blocks and your location"></canvas>
         <div class="city-map-title"><span>VISIT A DISTRICT</span><small>08 AREAS</small></div>
         <nav id="cityDistricts" class="city-districts" aria-label="Choose destination"></nav>

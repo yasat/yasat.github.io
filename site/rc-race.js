@@ -1,6 +1,6 @@
 /* RC Grand Prix — standalone Three.js / PeerJS game, deployable on GitHub Pages. */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=4';
+import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=5';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -49,6 +49,7 @@ const vectors = {
   tmp: new THREE.Vector3(), tmp2: new THREE.Vector3(), temp: new THREE.Vector3(),
   desiredCamera: new THREE.Vector3(), currentTarget: new THREE.Vector3(),
 };
+const TRACK_SCALE = 1.8;
 const trackNodes = [
   [-385,-105],[-380,-255],[-220,-330],[-35,-320],[140,-255],[278,-305],
   [445,-230],[503,-80],[423,75],[458,204],[340,323],[155,320],
@@ -61,7 +62,6 @@ const trackTangents = Array.from({length:TRACK_SAMPLES+1},(_,i)=>trackCurve.getT
 let trackLength = trackCurve.getLength();
 const stationColours = ['#a8e6bf','#f9b780','#c6b5ee','#f4d174','#8ad3e4','#ed99a3','#b6d79c','#edc6a9','#a2c9ff','#dfd3ab','#dbeca8'];
 const INITIAL_POS = .025;
-const TRACK_SCALE = 1.8;
 const PIT_SPAN = .067; // every lane runs for several hundred track metres
 const PIT_BOARD_WIDTH = 36, PIT_BOARD_HEIGHT = 22;
 const player = {x:0,z:0,heading:0,speed:0,fuel:1,boost:1,lap:0,travel:0,priorU:INITIAL_POS,u:INITIAL_POS,

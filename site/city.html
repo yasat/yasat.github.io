@@ -12,10 +12,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="city.css?v=2">
-  <script src="rc-resume-data.js" defer></script>
+  <link rel="stylesheet" href="city.css?v=4">
+  <script src="rc-resume-data.js?v=4" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-  <script type="module">import("./rc-race.js?v=2").catch(err => { document.getElementById("sceneErrorText").textContent = "Unable to load the 3D renderer: " + (err.message || err); document.getElementById("sceneError").hidden = false; });</script>
+  <script type="module">import("./rc-race.js?v=4").catch(err => { document.getElementById("sceneErrorText").textContent = "Unable to load the 3D renderer: " + (err.message || err); document.getElementById("sceneError").hidden = false; });</script>
 </head>
 <body class="rc-page">
 <a class="skip-link" href="index.html">Skip racing and read the accessible text resume</a>
@@ -25,7 +25,7 @@
     <div class="header-center"><span class="header-indicator"></span> RC GRAND PRIX <span class="header-split">/</span> EST. 2026</div>
     <nav class="race-nav" aria-label="Site navigation"><a href="index.html">TEXT RÉSUMÉ</a><a href="game.html?start=1">2D GAME</a><a class="nav-active" href="city.html">3D RC RACING</a></nav>
   </header>
-  <main class="race-main" id="raceMain">
+  <main class="race-main" id="raceMain" tabindex="-1">
     <canvas id="raceCanvas" tabindex="0" aria-label="Interactive 3D remote-control car racing circuit. Drive with W A S D, brake with Space, boost with Shift, change camera with C, and inspect nearby resume billboards with E."></canvas>
     <canvas id="compatCanvas" hidden aria-hidden="true"></canvas>
     <div class="scene-vignette" aria-hidden="true"></div>

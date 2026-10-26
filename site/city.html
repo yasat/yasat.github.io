@@ -1,102 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f7f8ee" />
-  <meta name="description" content="Drive through a closed 3D research city, follow fixed four-direction road signs, and park beside stationary information billboards about Satwik Ghanta's work." />
-  <meta property="og:title" content="Satwik Ghanta | Research City 3D" />
-  <title>Research City 3D | Satwik Ghanta</title>
-  <link rel="canonical" href="https://yasat.github.io/city.html" />
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="city.css" />
-  <script src="game-data.js" defer></script>
-  <script src="city.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b181c">
+  <meta name="description" content="Race a tiny RC car around a handcrafted 3D circuit. Tour Satwik Ghanta's complete resume on trackside pit-lane billboards, or challenge friends in multiplayer arcade races.">
+  <meta property="og:title" content="RC Grand Prix | Satwik Ghanta">
+  <title>RC Grand Prix — Satwik Ghanta</title>
+  <link rel="canonical" href="https://yasat.github.io/city.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="city.css">
+  <script src="rc-resume-data.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
+  <script type="module">import("./rc-race.js").catch(err => { document.getElementById("sceneErrorText").textContent = "Unable to load the 3D renderer: " + (err.message || err); document.getElementById("sceneError").hidden = false; });</script>
 </head>
-<body class="city-page">
-  <a class="skip-link" href="index.html">Skip the game and read the text resume</a>
-  <div class="city-shell">
-    <header class="city-header">
-      <a href="index.html" class="city-brand" aria-label="Satwik Ghanta, return to text resume">
-        <span class="city-logo" aria-hidden="true"><span></span></span>
-        <span><strong>SATWIK GHANTA</strong><small>AN INTERACTIVE RESEARCH PORTFOLIO</small></span>
-      </a>
-      <nav aria-label="Explore my website" class="city-topnav">
-        <a href="index.html">Text resume</a>
-        <a href="game.html?start=1">2D game</a>
-        <a href="city.html" aria-current="page" class="current">3D city</a>
-      </nav>
-      <button class="city-menu-button" id="cityMenuButton" type="button" aria-controls="citySidebar" aria-expanded="false">City map</button>
-    </header>
-
-    <main class="city-stage" id="cityStage">
-      <canvas id="cityCanvas" tabindex="0" aria-label="Perspective three-dimensional driving game with roads, districts, signposts and readable billboards. Use WASD or arrow keys to drive, Space to brake, and E to read a nearby billboard."></canvas>
-      <div class="city-top-note" aria-hidden="true"><span class="city-live-dot"></span> RESEARCH CITY <span>/</span> AN INTERACTIVE JOURNEY</div>
-
-      <section class="city-waypoint" id="cityWaypoint" aria-label="Wayfinding directions" aria-live="polite">
-        <span class="city-waypoint-kicker">SELECTED DESTINATION</span>
-        <strong id="cityWaypointName">Research District</strong>
-        <span id="cityWaypointRoute">Follow the road signs to explore</span><span class="city-crossing" id="cityJunctionNearby">Roads nearby lead to each area.</span>
-      </section>
-
-      <aside class="city-minimap" aria-label="Live city overview">
-        <span>LIVE CITY MAP</span><canvas id="cityMiniMap" width="300" height="220" aria-label="Small map of the city and your position"></canvas>
-      </aside>
-
-      <aside class="city-sidebar" id="citySidebar" inert aria-label="City map and district navigation">
-        <div class="city-sidebar-top">
-          <div><span class="city-overline">YOUR FIELD GUIDE</span><h1>The research<br /><em>city map.</em></h1></div>
-          <button class="city-sidebar-close" id="citySidebarClose" aria-label="Close city map" type="button">Close</button>
-        </div>
-        <p>The outer roads form a complete loop around the city. Each crossing has four fixed directional signs. Stop beside a billboard to read it. The map is optional.</p>
-        <canvas id="cityMap" width="300" height="220" aria-label="Map with nine city blocks and your location"></canvas>
-        <div class="city-map-title"><span>VISIT A DISTRICT</span><small>08 AREAS</small></div>
-        <nav id="cityDistricts" class="city-districts" aria-label="Choose destination"></nav>
-        <div class="city-sidebar-items"><span class="city-map-title">BILLBOARDS IN THIS AREA</span><div id="cityDistrictItems" class="city-district-items"></div></div>
-        <a class="city-all-link" href="index.html">Read the full text resume</a>
-      </aside>
-
-      <section class="city-dashboard" aria-label="Driving information">
-        <div class="city-speedometer"><span id="citySpeed">00</span><small>SPEED*</small></div>
-        <div class="city-dashboard-copy"><strong id="cityLocation">CITY ENTRANCE</strong><span>W / S drive &nbsp; A / D steer &nbsp; Space brake</span><small>* Arcade speed, not real-world units</small></div>
-        <button class="city-reset" id="cityReset" type="button">Reset car</button>
-      </section>
-
-      <div class="city-nearby" id="cityNearby" role="status" aria-live="polite">
-        <div class="city-nearby-text"><small id="cityNearbyLabel">CITY FIELD NOTE</small><strong id="cityNearbyTitle">Drive to a billboard and park to read.</strong></div>
-        <button type="button" id="cityReadButton" disabled>Read billboard</button>
-      </div>
-      <div class="city-touch" aria-label="Touchscreen driving controls">
-        <div class="city-touch-steer"><button type="button" data-city-control="left" aria-label="Steer left">LEFT</button><button type="button" data-city-control="right" aria-label="Steer right">RIGHT</button></div>
-        <div class="city-touch-drive"><button type="button" data-city-control="up" aria-label="Accelerate">GO</button><button type="button" data-city-control="down" aria-label="Reverse">REV</button><button type="button" data-city-control="brake" aria-label="Brake">STOP</button></div>
-      </div>
-    </main>
-  </div>
-
-  <div class="city-intro" id="cityIntro" role="dialog" aria-modal="true" aria-labelledby="cityIntroTitle">
-    <div class="city-intro-card">
-      <div class="city-intro-art" aria-hidden="true">
-        <div class="city-art-sun"></div><div class="city-art-buildings"><span></span><span></span><span></span><span></span><span></span></div>
-        <div class="city-art-road"></div><div class="city-art-car"></div><div class="city-art-sign">RESEARCH CITY / 2026</div>
-      </div>
-      <div class="city-intro-content"><span class="city-overline">WELCOME TO THE OTHER SIDE OF THE RESUME</span>
-        <h2 id="cityIntroTitle">My work,<br />one <em>city</em> at a time.</h2>
-        <p>Take the wheel of a little car. Drive around a closed city with an outer ring road and solid buildings. Each junction has four fixed directional signs. The billboards stay in place with their printed text. Pull up, stop, and read.</p>
-        <div class="city-control-help"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to drive</span><span><kbd>SPACE</kbd> to brake</span><span><kbd>E</kbd> to read</span></div>
-        <div class="city-intro-actions"><button class="city-start" type="button" id="cityStart">Start exploring the city</button><a href="index.html">Read instead</a></div>
-      </div>
+<body class="rc-page">
+<a class="skip-link" href="index.html">Skip racing and read the accessible text resume</a>
+<div class="race-app">
+  <header class="race-header">
+    <a class="race-brand" href="index.html" aria-label="Satwik Ghanta, resume home"><span class="brand-icon">SG<span>.</span></span><span class="brand-word"><strong>SATWIK GHANTA</strong><small>RESEARCH / RACING</small></span></a>
+    <div class="header-center"><span class="header-indicator"></span> RC GRAND PRIX <span class="header-split">/</span> EST. 2026</div>
+    <nav class="race-nav" aria-label="Site navigation"><a href="index.html">TEXT RÉSUMÉ</a><a href="game.html?start=1">2D GAME</a><a class="nav-active" href="city.html">3D RC RACING</a></nav>
+  </header>
+  <main class="race-main" id="raceMain">
+    <canvas id="raceCanvas" tabindex="0" aria-label="Interactive 3D remote-control car racing circuit. Drive with W A S D, brake with Space, boost with Shift, change camera with C, and inspect nearby resume billboards with E."></canvas>
+    <div class="scene-vignette" aria-hidden="true"></div>
+    <div class="scene-topline"><span class="live-blip"></span> <strong id="modeLabel">PADDOCK / EXPLORER</strong><span class="topline-separator">•</span><span id="trackLabel">GHANTA INTERNATIONAL RC CIRCUIT</span></div>
+    <div class="race-hud" id="raceHud" aria-label="Race dashboard">
+      <div class="hud-metric hud-speed"><span class="metric-label">SPEED</span><div class="speed-read"><strong id="speedNumber">000</strong><span>KM/H*</span></div></div>
+      <div class="hud-metric hud-fuel"><div class="metric-top"><span class="metric-label" id="fuelLabel">FUEL</span><span id="fuelValue">100%</span></div><div class="fuel-track"><div class="fuel-fill" id="fuelFill"></div></div><span class="metric-hint" id="fuelHint">≈ 2 full-speed laps / tank</span></div>
+      <div class="hud-metric hud-lap"><span class="metric-label" id="lapLabel">LAPS DRIVEN</span><strong id="lapValue">00 <span class="lap-delim">/ ∞</span></strong></div>
+      <div class="hud-metric hud-time"><span class="metric-label">LAP TIME</span><strong id="timeValue">00:00.0</strong></div>
+      <div class="hud-metric hud-boost" id="boostHud" hidden><span class="metric-label">NITRO</span><div class="boost-track"><div class="boost-fill" id="boostFill"></div></div></div>
     </div>
+    <div class="race-left-info" id="raceLeftInfo"><div class="section-line">ON THE CIRCUIT <span id="pitCount">11 PIT STOPS</span></div><strong id="pitStationName">THE PADDOCK</strong><p id="pitStationDescription">Explore the circuit and drive through any curved pit lane to refill. Read every résumé entry on the physical billboards.</p><div class="pit-progress" id="pitProgress">NEXT PIT: <span id="pitNext">RESEARCH FOCUS</span></div><button id="showGuide" type="button">VIEW PIT GUIDE <span>↗</span></button></div>
+    <aside class="race-minimap" aria-label="Circuit map"><div class="map-top"><span>CIRCUIT MAP</span><span id="mapMode">11 STOPS</span></div><canvas width="260" height="182" id="miniMap" aria-label="Circuit map displaying the car and pit locations"></canvas><span class="map-legend"><span class="map-key-player"></span> YOU <span class="map-key-pit"></span> PIT LANE</span></aside>
+    <div class="race-banner" id="raceBanner" role="status" aria-live="polite"></div>
+    <div class="inspect-tip" id="inspectTip" hidden>READ A BILLBOARD <kbd>E</kbd> <small>Press again to return</small></div>
+    <div class="race-bottom"><div class="bottom-controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> DRIVE</span><span><kbd>SPACE</kbd> BRAKE</span><span><kbd>SHIFT</kbd> BOOST</span><span><kbd>C</kbd> CAMERA</span><span><kbd>E</kbd> BOARD</span><span><kbd>T</kbd> PIT TOW</span></div><div class="bottom-actions"><button id="inspectButton" type="button" hidden>READ BOARD</button><button id="towButton" type="button" hidden>PIT TOW</button><button id="cameraButton" type="button">CAMERA <span id="cameraName">CHASE</span></button><button id="resetButton" type="button">↺ RESET</button><button id="menuButton" type="button">☰ MENU</button></div></div>
+    <div class="race-mobile-controls" aria-label="Touch driving controls"><div class="touch-side"><button data-drive="left" aria-label="Steer left">◀</button><button data-drive="right" aria-label="Steer right">▶</button></div><div class="touch-side"><button data-drive="brake" aria-label="Brake">BRAKE</button><button data-drive="boost" aria-label="Boost">NITRO</button><button data-drive="up" aria-label="Accelerate">GO</button></div></div>
+    <div class="race-guide" id="raceGuide" hidden aria-label="Pit stop résumé guide"><div class="guide-header"><div><span class="eyebrow">THE FULL ROUTE</span><h2>Pit lane guide<span class="accent">.</span></h2></div><button id="guideClose" type="button" aria-label="Close pit stop guide">✕</button></div><p>Each garage is a different section of the current text résumé. Drive into its curved service lane, read the complete text printed on its boards, and exit to refill your tank. Press <kbd>E</kbd> near a board to zoom the real camera onto it (no pop-ups).</p><div id="guideStops"></div><a href="index.html">READ ACCESSIBLE TEXT RÉSUMÉ ↗</a></div>
+  </main>
+  <footer class="race-footer"><span>DESIGNED FOR THE CURIOUS. BUILT TO DRIVE.</span><span>* ARCADE SPEED, NOT ACTUAL RC SCALE <span class="footer-divider">/</span> <span id="networkStatus">SINGLE PLAYER</span></span></footer>
+</div>
+<div class="overlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+  <div class="welcome-panel">
+    <div class="welcome-copy"><div class="eyebrow"><span class="eyebrow-dot"></span> YOUR GRID SLOT IS READY <span class="edition">001 / RC EDITION</span></div><h1 id="welcomeTitle">SMALL CARS.<br><em>BIG STORIES.</em></h1><p>A beautifully chaotic little racing circuit. Take a scenic lap through my work, or line up on the grid against your friends.</p><div class="mode-grid"><button type="button" id="tourStart" class="mode-choice tour-choice"><span class="mode-index">01 / THE PORTFOLIO</span><span class="mode-art mode-art-tour"><span class="mini-road"></span><span class="mini-cube">RC</span></span><strong>THE RÉSUMÉ RUN <span>↗</span></strong><small>11 curved pit stops. Every item in full on trackside billboards. No pop-ups, no rush.</small><span class="mode-foot">FREE ROAM <span>•</span> REFUEL ANYTIME</span></button><button type="button" id="arcadeStart" class="mode-choice arcade-choice"><span class="mode-index">02 / THE GRAND PRIX</span><span class="mode-art mode-art-arcade"><span class="arcade-circle"></span><span class="arcade-flags">▦</span></span><strong>ARCADE MULTIPLAYER <span>↗</span></strong><small>One track. One pit lane. Nitro boosts, lap times, and friends racing live.</small><span class="mode-foot">ONLINE ROOMS <span>•</span> SET THE LAPS</span></button></div><div class="welcome-keyline"><span>WASD / ARROWS TO DRIVE</span><span>NO INSTALL. JUST RACE.</span></div></div>
+    <div class="welcome-sidebar"><div class="side-heading">THE GHANTA CUP <span>26'</span></div><div class="track-illustration" aria-hidden="true"><svg viewBox="0 0 260 280" fill="none"><path d="M79 35 C133 5 215 34 214 92 C213 142 147 146 172 195 C190 234 131 268 78 244 C32 222 29 182 62 155 C93 129 33 112 41 77 C45 57 58 44 79 35Z" stroke="#3c5150" stroke-width="33" stroke-linecap="round"/><path d="M79 35 C133 5 215 34 214 92 C213 142 147 146 172 195 C190 234 131 268 78 244 C32 222 29 182 62 155 C93 129 33 112 41 77 C45 57 58 44 79 35Z" stroke="#dbe6da" stroke-width="2" stroke-dasharray="7 12"/><path d="M79 35 C133 5 215 34 214 92 C213 142 147 146 172 195 C190 234 131 268 78 244 C32 222 29 182 62 155 C93 129 33 112 41 77 C45 57 58 44 79 35Z" stroke="#d4ee6b" stroke-width="3" stroke-dasharray="10 145"/></svg><span class="track-mini-car">▲</span></div><div class="sidebar-stat"><span>11</span><small>RÉSUMÉ PIT STOPS</small></div><div class="sidebar-stat"><span>02</span><small>LAPS PER FUEL TANK</small></div><div class="sidebar-end"><span>TRACK CONDITIONS</span><strong><span class="weather-dot"></span> PERFECT FOR RACING</strong></div></div>
   </div>
-
-  <div class="city-detail" id="cityDetail" role="dialog" aria-modal="true" aria-labelledby="cityDetailTitle" aria-hidden="true">
-    <div class="city-detail-card"><button class="city-detail-close" id="cityDetailClose" type="button" aria-label="Close billboard detail">Close</button>
-      <div class="city-detail-number" id="cityDetailNumber">FIELD NOTE 01 / 32</div>
-      <div class="city-detail-district" id="cityDetailDistrict">RESEARCH DISTRICT</div>
-      <h2 id="cityDetailTitle"></h2><p class="city-detail-meta" id="cityDetailMeta"></p><p class="city-detail-description" id="cityDetailDescription"></p>
-      <div class="city-detail-actions"><a id="cityDetailLink" target="_blank" rel="noopener noreferrer" hidden>Explore the source</a><button type="button" id="cityDetailContinue">Back to driving</button></div>
-    </div>
+</div>
+<div class="overlay" id="lobbyOverlay" role="dialog" aria-modal="true" aria-labelledby="lobbyTitle" hidden>
+  <div class="lobby-panel"><button class="overlay-back" id="lobbyBack" type="button">← BACK TO MODES</button><div class="eyebrow">THE STARTING GRID / ONLINE</div><h2 id="lobbyTitle">RACE WITH<br><em>YOUR PEOPLE.</em></h2><p class="lobby-intro">Host an RC Grand Prix in your own browser. Share a short code or invite link; everyone races together on this circuit.</p>
+    <label class="field-label" for="playerName">DRIVER NAME</label><input id="playerName" maxlength="18" placeholder="Your racing name" autocomplete="nickname" value="Driver">
+    <div class="lobby-columns"><section class="lobby-side"><h3>HOST A GRAND PRIX</h3><label class="field-label" for="lapSelect">RACE DISTANCE</label><select id="lapSelect"><option value="2">2 laps / Sprint</option><option value="3" selected>3 laps / Quick race</option><option value="5">5 laps / Grand Prix</option><option value="8">8 laps / Endurance</option><option value="12">12 laps / Marathon</option></select><button id="hostButton" class="primary-action" type="button">CREATE ROOM →</button></section><section class="lobby-side"><h3>JOIN FRIENDS</h3><label class="field-label" for="roomInput">ROOM CODE OR INVITE LINK</label><input id="roomInput" placeholder="e.g. K7J3QP" autocomplete="off" autocapitalize="characters"><button id="joinButton" class="secondary-action" type="button">JOIN ROOM →</button></section></div>
+    <section id="waitingRoom" class="waiting-room" hidden><div class="waiting-top"><div><span class="eyebrow">LIVE ROOM</span><strong id="roomCode">------</strong></div><button id="copyInvite" type="button">COPY INVITE LINK ↗</button></div><div class="room-status" id="roomStatus">Connecting…</div><div class="lobby-racers" id="lobbyRacers"></div><button id="launchRace" class="primary-action" type="button" disabled>START THE RACE →</button><p class="waiting-note">The host keeps this room alive; drivers can join before the race starts. Best for a small group of friends.</p></section>
+    <div class="lobby-footer"><button id="soloButton" type="button">OR PLAY ARCADE SOLO →</button><span id="lobbyError" role="status" aria-live="polite"></span></div>
   </div>
-  <noscript><p class="city-noscript">This city needs JavaScript. The complete <a href="index.html">text resume</a> is available without the game.</p></noscript>
+</div>
+<div class="overlay" id="finishOverlay" role="dialog" aria-modal="true" aria-labelledby="finishTitle" hidden><div class="finish-panel"><div class="eyebrow">THE CHECKERED FLAG</div><h2 id="finishTitle">RACE<br><em>COMPLETE.</em></h2><p id="finishSubtitle">What a drive.</p><div id="finishResults" class="finish-results"></div><div class="finish-actions"><button class="primary-action" id="raceAgain" type="button">RACE AGAIN →</button><button class="secondary-action" id="finishMenu" type="button">MAIN MENU</button></div></div></div>
+<div class="scene-error" id="sceneError" hidden role="alert"><h2>3D graphics could not start</h2><p id="sceneErrorText">This game needs a browser with WebGL and access to the Three.js library.</p><a href="index.html">Return to the text résumé</a></div>
+<noscript><div class="scene-error"><h2>JavaScript is required to race.</h2><p>Everything in the portfolio is available in the <a href="index.html">text résumé</a>.</p></div></noscript>
 </body>
 </html>

@@ -1,93 +1,66 @@
-## Version 7: RC tabletop driving arena
+# Satwik Ghanta
 
-The original 2D driving game is now presented as a miniature remote-control car circuit sitting on a writing desk. This update changes only the 2D game in `site/game.js`, `site/game.html`, and `site/styles.css`. The professional text resume and the 3D city are preserved.
+A static GitHub Pages website with three experiences:
 
-- A continuous four-sided raised foam barrier and a perimeter driving road enclose the playable arena. Collision logic stops the car from leaving the track.
-- The top-down RC car has a small rear whip antenna with a bright red tip.
-- The world includes a laptop, books, notebook, desk lamp, coffee mug, pocket-sized phone, pen and pencils, at consistent sizes relative to the RC car.
-- A `View whole desk` button toggles an overview so visitors can see the physical tabletop arrangement. The car stops while in overview.
-- All résumé blocks, controls and respawn rules are kept intact.
+- **Updated full text résumé:** `site/index.html` — retained as the canonical, accessible portfolio.
+- **Original 2D tabletop RC game:** `site/game.html` — preserved.
+- **New 3D RC Grand Prix:** `site/city.html` — replaces the previous 3D research city. The page address stays the same so existing links continue to work.
 
-**Scale guide:** The RC car measures about 40 x 70 game units; the phone 48 x 99; the pen 12 x 148; the laptop 556 x 388; and the primary book 400 x 500. Everything is drawn at that same world scale.
+## 3D game · The résumé run
 
-# Satwik Ghanta - portfolio, 2D drive and 3D research city (Version 7)
+The new game is an F1-inspired, scenic 3D RC car circuit, with an asphalt track, red/white kerbs, start/finish markings, a gantry, grandstands and spectators, service garages, trackside signs, floodlights, pine forests, ponds, landscape, and detailed miniature RC cars.
 
-A static GitHub Pages-ready academic portfolio with three separate ways to explore:
+**Eleven résumé pit stops:** One curved, off-main-track service lane per section: About, Research, Collaborations, Publications, Teaching, Educational Innovation, Mentorship, Education, Professional Software Engineering, Academic Service, and Contact. Each pit lane features permanent in-world billboards for **every one of that section's résumé entries** (42 individual boards in the current content). Board images contain the **complete text** of each item, not an abbreviated abstract, plus relevant dates, status, metadata, and visible link labels. There are no pop-up résumé cards. Press **E** near a poster to smoothly zoom the real 3D camera onto it, and E again to continue. Scroll to zoom closer. This is a camera mode, not a modal or popup. A pit guide provides an optional index and direct navigation to the eleven physical pit lanes.
 
-- **Text resume** (`site/index.html`): the default, accessible academic portfolio.
-- **2D game** (`site/game.html`): the bright top-down driving game with breakable resume cards.
-- **3D city** (`site/city.html`): a stylized perspective city with a continuous outer ring road, solid building boundaries, fixed direction signs, and readable stationary information billboards.
+**Automatically synchronized résumé content:** On each visit, the 3D game fetches `index.html` and parses its sections and entries, so subsequent updates to your text résumé appear on billboards without editing the game. A snapshot fallback is bundled in `site/rc-resume-data.js` for resilience; if the homepage structure changes significantly, run `python update-resume-snapshot.py` at repository root to refresh it.
 
-This update changes the 3D city only. The text resume and 2D game remain unchanged. Content is shared between both games in `site/game-data.js`.
+**Fuel and driving:** Drive unrestricted around the circuit and accessible surrounding terrain using WASD/arrow keys. One full tank covers approximately **two complete track lengths** at full speed. Fuel consumption is distance-based: reading while stopped does not burn fuel. Pit lanes are intentionally curved and narrower than the main straight, impose a speed penalty, and reconnect with the circuit. To refill, enter a pit lane from one end, drive through its midpoint, and exit through the opposite end; **no stopping is required**. Taking a shortcut across the main track does not refill the car. If stranded, press **T** to get towed to the closest pit entrance with enough fuel to drive through it. Arcade towing adds a 20-second race-time penalty.
 
-## Version 5 improvements
+## Arcade multiplayer
 
-### 1. Fully enclosed city with a perimeter road
+The standalone **Arcade Grand Prix** mode has the same scenic RC circuit, only **one refuelling pit lane**, and **no résumé billboards**. It features live competitors, fuel management, refill-on-drive-through, lap counting and times, resettable races, and Shift-activated nitro (recharging over time and via boost pads). Players can select 2, 3, 5, 8, or 12 laps, choose a driver name, host a room, and copy an invite URL containing a short room code.
 
-The four outer roads at `x = -600`, `x = 600`, `z = -600` and `z = 600` join into a continuous drivable ring around all eight districts and the central plaza. Roads no longer continue out of the city into empty space.
+**Architecture:** GitHub Pages hosts the static page. The host's browser coordinates the lobby, start countdown, positions and race results via PeerJS WebRTC data connections. The **free default PeerJS Cloud signalling service** is used to connect browsers; this is an external service, not a GitHub Pages backend. The host must keep their game and browser tab open. Race movement is simulated on each player's own client and shared over the network; this is casual multiplayer, **not a cheat-resistant authoritative tournament server**. The vehicles are non-colliding to avoid inconsistent positions between peer machines. Network restrictions/firewalls/NATs or signalling service downtime can prevent some peers from connecting; for guaranteed connectivity or large groups, operate your own signalling server and TURN relay outside GitHub Pages. One host plus seven guests is the intended lobby cap, but real-world WebRTC connections are dependent on each player's network. There is also offline single-player Arcade mode (once the 3D library has loaded).
 
-Beyond that road loop, a continuous row of **72 detailed perimeter buildings**, including the four corners, encloses the whole map. The enclosure is dense and has no drivable gaps. There are **112 collidable buildings in total**. The car checks collision against the actual rectangular building footprints, not invisible district-sized blocks. The outer map boundary is a further safety limit. Billboards and signposts also prevent the car from driving through their supports.
+The 3D renderer is **Three.js 0.180.0** loaded from jsDelivr, and optional multiplayer uses **PeerJS 1.5.5** loaded from jsDelivr. No build command, paid host, credentials, database, or environment file is required. First-time page load needs internet access for the CDNs. No claims of guaranteed cross-network WebRTC connectivity are made.
 
-Buildings retain coloured facades, window grids, entrances, awnings and rooftop details. The camera adjusts near the perimeter so it does not pass through the boundary buildings.
+### Controls
 
-### 2. Fixed billboards with fixed printed text
+| Control | Action |
+|---|---|
+| W / ↑ | Accelerate |
+| S / ↓ | Reverse |
+| A, D / ←, → | Steering |
+| Space | Brake |
+| Shift | Nitro in Arcade mode |
+| E | Focus/unfocus the nearest billboard, no popup |
+| Mouse wheel / + and − | Zoom in billboard focus mode |
+| C | Switch chase, helicopter, bumper and aerial camera |
+| P | Show or hide résumé pit-stop guide |
+| T | Recovery tow when the tank is empty (Arcade penalty: +20 seconds) |
+| On-screen buttons | Basic driving on touch devices |
 
-All **32 billboards** are anchored to specific pavements inside the research blocks. Each faces the nearest road. The frame, supports, and pre-rendered text do not turn to face the car. The sign shows a district and number, a meaningful paper or project title, its status or dates, and a short description. The full information remains accessible by parking, pressing `E`, or selecting the item from the map.
+## Preview locally
 
-Physical signs naturally grow or shrink in perspective as you approach or leave them. Their actual positions, orientation and print do not change.
-
-### 3. Four fixed directional pointers per intersection
-
-There are **16 intersections**, each with **four physical direction signs**: N, E, S and W, for a total of 64 static pointers. Their text is calculated once when the city loads, rather than following the driver or updating each frame. At the city edges, outward-facing pointers say CITY LIMIT to warn that the map does not continue beyond the perimeter. The optional destination panel is still allowed to give live driving guidance; it does not alter the street signs.
-
-The pointer supports are on the pavement beyond the lane markings, and outermost zebra crossings no longer point outside the road network.
-
-## Controls
-
-- W or Up arrow: accelerate
-- S or Down arrow: reverse
-- A and D or Left and Right arrows: steer
-- Space: brake
-- E: read the closest billboard while parked
-- M: open or close the optional district map
-- Mobile: LEFT, RIGHT, GO, REV and STOP on-screen controls
-
-A text-based list of billboards is available in the city guide for visitors who prefer to navigate without driving.
-
-## Local preview
-
-Run this from the `site` directory:
+From the `site` folder run:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000/` for the text resume, `http://localhost:8000/game.html` for the 2D game or `http://localhost:8000/city.html` for the 3D city. Add `?start=1` to the game URLs to skip the instructions.
+Visit `http://localhost:8000/` (text résumé), `/game.html` (2D), or `/city.html` (new 3D). Start a local server rather than opening `city.html` from `file://`, because the game reads the homepage with `fetch()` and uses ES modules. When checking multiplayer, use two *separate browser sessions* and a genuine GitHub Pages HTTPS URL for best WebRTC behaviour.
 
-## Deploy to GitHub Pages
+## Deploy
 
-1. Back up the current contents of your `yasat.github.io` repository.
-2. Copy the ZIP contents, including the `site/` and `.github/` folders, to the repository root.
-3. Remove or disable older Quarto publishing workflows if they remain.
-4. Commit and push to `main`.
-5. In repository **Settings > Pages**, select **GitHub Actions**.
+1. Extract this project into the root of the `yasat.github.io` repository, including `site/` and `.github/`.
+2. Commit the changed files and push them to `main`.
+3. In **Settings → Pages**, select **GitHub Actions**. The included `.github/workflows/deploy.yml` publishes the contents of `site/`.
+4. Visit `https://yasat.github.io/city.html` and test both modes. Share an Arcade room URL with a friend to test two-browser peer-to-peer racing.
 
-The included `.github/workflows/deploy.yml` publishes the contents of `site/`. This project is entirely client-side JavaScript, HTML and CSS. There are no third-party runtime dependencies, build steps or server requirements. The `original-quarto/` directory is a backup of the earlier website and is not deployed.
+The `original-quarto/` folder is preserved as an undeployed archive. The 2D game and full text résumé were not rewritten; the navigation copy pointing to the new 3D racer was updated.
 
-## Updating the website
+## Testing notes
 
-- Change paper titles, summaries, status labels and source links in `site/game-data.js`.
-- Edit the text portfolio in `site/index.html`.
-- Edit city size, world objects, collisions, signs, 3D projections and driving rules in `site/city.js`.
-- Edit colours and page layout in `site/city.css` and `site/styles.css`.
-
-The 3D city is a low-poly game, not a photorealistic GTA-level world. The preferred renderer is built-in WebGL2 or WebGL1, with a Canvas2D fallback. No external JavaScript library is required. Always check research details and publication statuses before publishing.
-
-
-## Version 7 rendering fixes
-
-The 3D city now uses built-in WebGL2 or WebGL1 when available (no dependencies). The entire road, pavement and grass layer is baked into a single continuous ground texture, eliminating overlapped-road flicker and holes. Billboards are static, perspective-correct world surfaces with identical printed content on both readable sides; the letters are never animated or rotated toward the driver. Proper depth testing keeps them behind buildings. The requested closer chase camera uses distance 95, height 58, and look-ahead 0.50. When its line of sight would pass through a building or fixed sign, the camera moves closer to the car temporarily; the sign never moves. A Canvas2D fallback with the same continuous ground artwork remains for browsers without WebGL. Modern browsers with WebGL have real depth testing and perspective-correct print surfaces.
-
-### Changing your camera
-
-Open `site/city.js`, find `function camera()`, and edit `chaseDistance=95`, `py=58`, `followGap*.50`, and `dy=-58`. Keep the y values equal in both places, and be aware that the nearby-object avoidance may shorten the requested distance temporarily. Billboard text artwork is created once in `createBillboardArt()` and physically mapped to both sides in `createWebGLScene()`; it does not animate. The ground comes from `makeContinuousGround()`, which combines all road and pavement paint into a single texture.
+- `node --check site/rc-race.js` validates JavaScript parsing.
+- The résumé snapshot generator extracts the same 11 sections and 42 items from `site/index.html`.
+- Functional 3D/WebRTC testing should be performed in real browsers with WebGL and external CDN access. WebRTC availability depends on the internet environment. The **Multiplayer** feature is a usable PeerJS implementation, not a guarantee that every NAT/router configuration will connect.

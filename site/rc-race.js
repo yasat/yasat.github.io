@@ -1,5 +1,6 @@
 /* RC Grand Prix — standalone Three.js / PeerJS game, deployable on GitHub Pages. */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import { CompatibilityTrackRenderer } from './rc-compatibility.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -11,6 +12,14 @@ const CAR_COLOURS = [0xdbf169, 0xff8871, 0x64cce2, 0xf4bf73, 0xc4a4fb, 0xf5e3c2,
 const LOGO_FONT = '900 68px Arial, sans-serif';
 const viewport = $('raceCanvas');
 let renderer, scene, camera, sun, course, asphaltMesh, worldObjects, sceneReady = false;
+let compatibilityRenderer = null;
+let compatibilityActive = false;
+let rendererCheckCount = 0;
+let rendererBlankCount = 0;
+let lastRendererCheck = 0;
+let lastCompatibilityFrame = 0;
+let sceneryTrees = [];
+const compatibilityForced = new URLSearchParams(location.search).get('renderer') === 'compat';
 let worldVersion = 0;
 let stationData = [];
 let raceMode = 'tour';
@@ -108,6 +117,33 @@ function announce(message,seconds=2.3) {
   showBannerUntil=performance.now()+seconds*1000;
 }
 function reportError(message) { $('sceneErrorText').textContent=message;$('sceneError').hidden=false; }
+function setCompatibility(active, explanation=''){
+  compatibilityActive=Boolean(active);
+  $('compatCanvas').hidden=!compatibilityActive;
+  $('renderModeButton').textContent=compatibilityActive?'VIEW: COMPAT ✓':'VIEW: 3D';
+  $('renderModeButton').title=compatibilityActive?'Show the native WebGL camera again':'Show the compatibility track camera';
+  if(compatibilityActive&&explanation)console.warn('RC Grand Prix compatibility camera:',explanation);
+}
+function webglPictureLooksBlank(){
+  if(!renderer||!sceneReady)return false;
+  try{
+    const gl=renderer.getContext();
+    if(gl.isContextLost())return true;
+    // Read points spread across the actual WebGL framebuffer, *not* the CSS HUD.
+    // When Three is only painting the background, these are essentially identical.
+    const w=gl.drawingBufferWidth,h=gl.drawingBufferHeight;
+    if(w<5||h<5)return false;
+    const a=new Uint8Array(4),reference=new Uint8Array(4);
+    gl.readPixels(Math.floor(w*.5),Math.floor(h*.5),1,1,gl.RGBA,gl.UNSIGNED_BYTE,reference);
+    let biggestDifference=0;
+    for(const [u,v] of [[.18,.18],[.42,.23],[.78,.17],[.18,.48],[.78,.52],[.31,.75],[.5,.68],[.79,.83],[.5,.9]]){
+      gl.readPixels(Math.floor(w*u),Math.floor(h*v),1,1,gl.RGBA,gl.UNSIGNED_BYTE,a);
+      for(let k=0;k<3;k++)biggestDifference=Math.max(biggestDifference,Math.abs(a[k]-reference[k]));
+    }
+    return biggestDifference<13;
+  }catch(error){console.warn('Cannot inspect WebGL frame',error);return false;}
+}
+
 
 function trackPosition(u,offset=0) {
   const f=((u%1)+1)%1,center=trackCurve.getPointAt(f), tangent=trackCurve.getTangentAt(f);
@@ -383,6 +419,7 @@ function addTreesAndLandscape(){
     treePositions.push({x,z,scale,ang:rand()*TWO_PI});
     if(treePositions.length>=320)break;
   }
+  sceneryTrees=treePositions;
   const trees=treePositions.length;
   const treeMat=new THREE.MeshStandardMaterial({color:PINE_GREEN,roughness:1,flatShading:true});
   const crownGeom=new THREE.ConeGeometry(8,26,7);
@@ -537,7 +574,12 @@ function newScene(){
   player.mesh=makeCar(player.colour);scene.add(player.mesh);
   for(const state of opponents.values()){state.mesh=makeCar(state.colour,state.name);scene.add(state.mesh);}
   resizeRenderer();
+  if(!compatibilityRenderer)compatibilityRenderer=new CompatibilityTrackRenderer($('compatCanvas'),trackPoints,trackTangents);
+  compatibilityRenderer.setPits(stationData);
+  compatibilityRenderer.setTrees(sceneryTrees);
+  rendererCheckCount=0;rendererBlankCount=0;lastRendererCheck=0;
   sceneReady=true;
+  if(compatibilityForced)setCompatibility(true,'Requested by URL');
 }
 function disposeObject(root){
   root.traverse(o=>{
@@ -799,7 +841,19 @@ function tick(now){
       else if(left<=3.95){const count=Math.max(1,Math.ceil(left));const text=`${count}`;if(currentBanner!==text||showBannerUntil<now)announce(text,.82);}
     }
     updatePhysics(dt);updateOpponentMeshes(dt);updateCamera(dt);
-    renderer.render(scene,camera);
+    if(!compatibilityActive){
+      try {renderer.render(scene,camera);}
+      catch(error){console.warn('WebGL draw failed',error);setCompatibility(true,'WebGL render failure');}
+      if(!compatibilityActive&&gameRunning&&now-lastModeChange>950&&now-lastRendererCheck>350&&rendererCheckCount<6){
+        lastRendererCheck=now;rendererCheckCount++;
+        if(webglPictureLooksBlank())rendererBlankCount++;else rendererBlankCount=0;
+        if(rendererBlankCount>=2)setCompatibility(true,'WebGL displayed its sky but not the circuit or cars');
+      }
+    }
+    if(compatibilityActive&&now-lastCompatibilityFrame>34){
+      compatibilityRenderer.render({camera,player,opponents,inspector,mode:raceMode});
+      lastCompatibilityFrame=now;
+    }
     hudClock+=dt;texturesClock+=dt;minimapClock+=dt;networkClock+=dt;
     if(hudClock>.13){updateDashboard();updateClosestBoard();hudClock=0;}
     if(texturesClock>.9){refreshVisiblePosters();texturesClock=0;}
@@ -1073,6 +1127,12 @@ function setupEvents(){
   $('inspectButton').addEventListener('click',toggleInspect);
   $('towButton').addEventListener('click',pitTow);
   $('cameraButton').addEventListener('click',toggleCamera);
+  $('renderModeButton').addEventListener('click',()=>{
+    if(compatibilityActive){setCompatibility(false);rendererCheckCount=0;rendererBlankCount=0;lastModeChange=performance.now()-1300;}
+    else setCompatibility(true,'Manually selected');
+  });
+  viewport.addEventListener('webglcontextlost',e=>{e.preventDefault();setCompatibility(true,'WebGL context lost');});
+  viewport.addEventListener('webglcontextrestored',()=>{rendererCheckCount=0;rendererBlankCount=0;});
   $('resetButton').addEventListener('click',()=>{if(!gameRunning)return;const fuel=player.fuel;resetPlayer(INITIAL_POS,raceMode==='tour');if(raceMode==='arcade'){player.fuel=fuel;player.lap=0;player.travel=0;}announce('BACK ON THE GRID',1.4);});
   $('menuButton').addEventListener('click',()=>{
     clearKeys();gameRunning=false;raceStarted=false;resetNetwork();$('welcomeOverlay').hidden=false;$('lobbyOverlay').hidden=true;$('finishOverlay').hidden=true;$('raceGuide').hidden=true;

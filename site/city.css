@@ -15,3 +15,7 @@
 @media(max-width:390px){.race-brand .brand-word{display:none}.race-hud{grid-template-columns:repeat(4,1fr)}.hud-lap strong,.hud-time strong{font-size:18px}.mode-grid{gap:7px}.mode-choice{padding:10px;min-height:210px}.mode-choice>strong{font-size:17px}.race-left-info{width:160px}.race-minimap{width:104px}.touch-side{gap:5px}.touch-side button{min-width:45px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
 body.in-arcade .bottom-controls>span:nth-child(5){display:none}
+
+/* Self-healing projection-based circuit camera if the GPU draws only WebGL background. */
+.race-main canvas#compatCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:0}
+#renderModeButton{color:var(--lime);border-color:rgba(215,243,107,.55)}

@@ -14,8 +14,22 @@
 @media(max-width:760px){.race-header{height:56px;padding:0 14px}.brand-word strong{font-size:16px}.brand-word small{font-size:7px}.brand-icon{width:34px;height:34px;font-size:24px}.race-nav{gap:0}.race-nav a{font-size:10px;padding:8px}.race-nav a:nth-child(2){display:none}.race-main{height:calc(100dvh - 82px);min-height:580px}.race-footer{height:26px;padding:0 11px;font-size:8px}.race-footer>span:first-child{display:none}.scene-topline{font-size:10px;top:12px}.trackLabel{display:none}.race-hud{right:9px;left:9px;top:39px;display:grid;grid-template-columns:repeat(4,1fr)}.hud-metric{min-width:0!important;padding:8px;gap:4px}.speed-read strong{font-size:29px}.hud-lap strong,.hud-time strong{font-size:20px}.hud-speed .speed-read span,.metric-hint{display:none}.hud-boost{grid-column:1/-1}.race-left-info{left:9px;top:125px;width:188px;padding:11px}.race-left-info>strong{font-size:20px;margin:7px 0 4px}.race-left-info p{font-size:10px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.pit-progress{display:none}.race-left-info button{font-size:10px;padding-top:7px}.section-line{font-size:9px}.race-minimap{top:125px;right:9px;width:116px;padding:7px}.map-top{font-size:8px}.race-minimap canvas{height:88px}.map-legend{font-size:8px;gap:4px}.race-bottom{padding:6px 10px;bottom:0;min-height:40px}.bottom-controls{display:none}.bottom-actions{width:100%;justify-content:space-between}.bottom-actions button{font-size:10px;padding:5px}.race-mobile-controls{display:flex;position:absolute;z-index:3;bottom:56px;left:12px;right:12px;justify-content:space-between;gap:9px;touch-action:none;pointer-events:none}.touch-side{display:flex;gap:8px;align-items:flex-end;pointer-events:auto}.touch-side button{border:1px solid rgba(245,250,238,.7);border-radius:8px;background:rgba(10,31,34,.75);color:#f3f7e8;min-width:50px;height:52px;font:800 13px var(--face);backdrop-filter:blur(7px);touch-action:none}.touch-side button[data-drive=up]{width:66px;height:67px;background:rgba(212,239,108,.88);color:#17342d;border-color:#d4ef6c}.touch-side button[data-drive=boost]{color:var(--lime)}.inspect-tip{bottom:170px;font-size:10px}.welcome-panel{grid-template-columns:1fr;min-height:0;max-width:570px}.welcome-copy{padding:25px 23px}.welcome-copy h1{font-size:clamp(52px,11vw,80px);margin:17px 0}.welcome-copy>p{font-size:12px}.welcome-sidebar{display:none}.mode-choice{min-height:220px;padding:12px}.mode-choice>strong{font-size:18px}.mode-choice>small{font-size:10px}.mode-art{height:58px}.welcome-keyline{font-size:9px}.lobby-panel,.finish-panel{padding:23px 18px}.lobby-columns{gap:8px}.lobby-side{padding:11px}.lobby-side h3{font-size:18px}.lobby-racers{grid-template-columns:repeat(2,1fr)}.lobby-panel h2{font-size:65px}.overlay{padding:11px}}
 @media(max-width:390px){.race-brand .brand-word{display:none}.race-hud{grid-template-columns:repeat(4,1fr)}.hud-lap strong,.hud-time strong{font-size:18px}.mode-grid{gap:7px}.mode-choice{padding:10px;min-height:210px}.mode-choice>strong{font-size:17px}.race-left-info{width:160px}.race-minimap{width:104px}.touch-side{gap:5px}.touch-side button{min-width:45px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
-body.in-arcade .bottom-controls>span:nth-child(5){display:none}
+body.in-arcade .bottom-controls>span:nth-child(6){display:none}
 
 /* Self-healing projection-based circuit camera if the GPU draws only WebGL background. */
 .race-main canvas#compatCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:0}
 #renderModeButton{color:var(--lime);border-color:rgba(215,243,107,.55)}
+
+/* Independent arcade bomb pickups / mobile throw button */
+.hud-bomb{min-width:108px;border-color:rgba(249,196,111,.42)}
+.hud-bomb strong{font:900 18px var(--face);letter-spacing:.08em;color:#c1d0ca;white-space:nowrap}
+.hud-bomb strong.armed{color:#ffd077;text-shadow:0 0 12px rgba(245,180,72,.3)}
+.hud-bomb small{font:700 9px var(--face);letter-spacing:.12em;color:#93ada1}
+#throwButton{color:#ffcc77;border:1px solid rgba(247,192,98,.38);padding:9px 11px;border-radius:3px}
+#throwButton:disabled{opacity:.38;cursor:default}
+.race-mobile-controls #touchBomb{color:#172c2c;background:#ffcf76;border-color:#ffd999}
+.race-mobile-controls #touchBomb:disabled{opacity:.46}
+@media(max-width:760px){.hud-bomb{grid-column:1/-1;padding:6px 10px;display:flex;flex-direction:row;gap:12px;align-items:center}.hud-bomb small{margin-left:auto}.race-mobile-controls #touchBomb{width:57px;height:57px}}
+
+body:not(.in-arcade) #bombHelp{display:none}
+.hud-bomb[hidden],#touchBomb[hidden],#throwButton[hidden]{display:none!important}

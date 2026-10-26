@@ -394,7 +394,36 @@ export class CompatibilityTrackRenderer {
       [p.x+side.x*27,24,p.z+side.z*27],[p.x-side.x*27,24,p.z-side.z*27]],'#153c38');
     const pt=this.project(p.x,22,p.z);if(pt&&pt.depth<450){const c=this.ctx;c.fillStyle='#def19d';c.font=`900 ${clamp(750/pt.depth,8,22)}px sans-serif`;c.textAlign='center';c.fillText('SG / RC GRAND PRIX',pt.x,pt.y);}
   }
-  render({camera,player,opponents,inspector,mode}){
+  drawBombPickups(combat,now){
+    for(const pickup of (combat?.pickups||[])){
+      if(now<(combat?.readyAt?.[pickup.index]||0))continue;
+      const p=this.project(pickup.pos.x,4.2,pickup.pos.z);
+      if(!p||p.depth>350||p.x<0||p.x>this.width||p.y<0||p.y>this.height)continue;
+      const radius=clamp(600/p.depth,5,30),ctx=this.ctx;
+      ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#fbd37f';ctx.strokeStyle='#263a38';ctx.lineWidth=Math.max(1,radius*.17);
+      ctx.beginPath();ctx.moveTo(0,-radius);ctx.lineTo(radius,0);ctx.lineTo(0,radius);ctx.lineTo(-radius,0);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#203034';ctx.beginPath();ctx.arc(0,0,radius*.43,0,PI2);ctx.fill();
+      ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(radius*.13,-radius*.15,radius*.09,0,PI2);ctx.fill();ctx.restore();
+    }
+  }
+  drawBombs(combat){
+    if(!combat)return;
+    for(const bomb of combat.projectiles||[]){
+      const q=this.project(bomb.x,6.5,bomb.z);
+      if(!q||q.depth>460)continue;
+      const r=clamp(660/q.depth,3,20);const ctx=this.ctx;
+      ctx.save();ctx.beginPath();ctx.fillStyle='#17262b';ctx.strokeStyle='#ffca70';ctx.lineWidth=2;
+      ctx.arc(q.x,q.y,r,0,PI2);ctx.fill();ctx.stroke();ctx.restore();
+    }
+  }
+  drawStunCloud(x,z){
+    const q=this.project(x,16,z);if(!q)return;
+    const ctx=this.ctx,r=clamp(1300/q.depth,7,52);ctx.save();ctx.fillStyle='rgba(235,242,238,.88)';ctx.strokeStyle='rgba(69,105,100,.5)';ctx.lineWidth=2;
+    for(const [dx,dy,a] of [[-r*.55,0,.58],[0,-r*.25,.73],[r*.55,0,.55],[0,r*.3,.6]]){
+      ctx.beginPath();ctx.ellipse(q.x+dx,q.y+dy,r*a,r*a*.73,0,0,PI2);ctx.fill();ctx.stroke();
+    }ctx.restore();
+  }
+  render({camera,player,opponents,inspector,mode,combat,now=Date.now()}){
     this.size();if(!this.width||!this.height)return;
     this.startProjection(camera);this.cameraX=camera.position.x;this.cameraZ=camera.position.z;
     const ctx=this.ctx;
@@ -410,14 +439,19 @@ export class CompatibilityTrackRenderer {
       return dr-dl;
     });
     for(const seg of all)this.drawSegment(seg);
-    if(mode==='arcade')this.drawArcadePads();
+    if(mode==='arcade'){this.drawArcadePads();this.drawBombPickups(combat,now);}
     this.drawTrackBarriers(player);
     this.drawGrandstands();
     this.drawPitWayfinding(player);
     this.drawStations(player,inspector);
     this.drawGantry();
-    for(const o of opponents.values())this.drawCar(o.x,o.z,o.heading,o.hex||'#ffb37d',true);
-    if(!inspector)this.drawCar(player.x,player.z,player.heading,'#d7f36b',false,player.steerAngle||0);
+    for(const o of opponents.values()){
+      const x=o.mesh?.position.x??o.x,z=o.mesh?.position.z??o.z,heading=o.mesh?.rotation.y!=null?-o.mesh.rotation.y:o.heading;
+      this.drawCar(x,z,heading,o.hex||'#ffb37d',true,o.steering||0);
+      if(now<(o.stunnedUntil||0))this.drawStunCloud(x,z);
+    }
+    if(!inspector){this.drawCar(player.x,player.z,player.heading,'#d7f36b',false,player.steerAngle||0);if(now<(combat?.localStunUntil||0))this.drawStunCloud(player.x,player.z);}
+    if(mode==='arcade')this.drawBombs(combat);
     if(mode==='arcade'){
       const ctx=this.ctx;ctx.save();ctx.fillStyle='rgba(10,26,27,.78)';ctx.fillRect(this.width/2-85,6,170,23);
       ctx.textAlign='center';ctx.font='900 11px Arial';ctx.fillStyle='#dff1a1';ctx.fillText('ARCADE  /  RACE VIEW',this.width/2,22);ctx.restore();

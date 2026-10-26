@@ -1,6 +1,6 @@
 /* RC Grand Prix — standalone Three.js / PeerJS game, deployable on GitHub Pages. */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=9';
+import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=10';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -69,7 +69,12 @@ const player = {x:0,z:0,heading:0,speed:0,fuel:1,boost:1,lap:0,travel:0,priorU:I
   elapsed:0,lapAt:0,lastLap:0,fastest:Infinity,offRoad:false,inPit:false,pitVisit:null,boosting:false,
   mesh:null,colour:CAR_COLOURS[0],braking:false,finished:false,steer:0,steerAngle:0,rank:0};
 const opponents = new Map();
-const NETWORK_PROTOCOL = 8;
+const NETWORK_PROTOCOL = 9; // new combat packets require the same build on every racer
+const BOMB_PICKUPS = [.19,.43,.66,.90].map((u,index)=>({index,u,offset:[-5,5,-5,5][index],pos:trackPosition(u,[-5,5,-5,5][index])}));
+const BOMB_RESPAWN_MS = 12000;
+const BOMB_STUN_MS = 3000;
+const BOMB_RANGE = 230;
+const combat = {held:0,readyAt:[0,0,0,0],pending:-1,requestAt:0,projectiles:[],nextShot:0,shotIds:new Set(),localStunUntil:0,hostInventory:new Map(),pickupMeshes:[],lastStunAnnouncement:0};
 const raceState = { role:'solo', peer:null,hostConn:null,connections:new Map(),remote:new Map(),roomCode:'',name:'Driver',hostId:'',joined:false,started:false,startTime:0,finishers:new Map(),pendingStart:null,round:0,roster:[],ready:new Set() };
 
 async function loadResume() {
@@ -745,6 +750,7 @@ function makeCar(colour=CAR_COLOURS[0],label=''){
     if(z<0)frontWheels.push(pivot);
   }
   grp.userData.frontWheels=frontWheels;
+  const stunCloud=makeStunCloud();stunCloud.visible=false;stunCloud.position.set(0,19,0);grp.add(stunCloud);grp.userData.stunCloud=stunCloud;
   const antenna=b(.18,11,.18,2.2,11.6,4.8,dark);
   const antennaBall=new THREE.Mesh(new THREE.SphereGeometry(.7,8,8),red);antennaBall.position.set(2.2,17,4.8);grp.add(antennaBall);
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(9,20),new THREE.MeshBasicMaterial({color:0x081b1b,transparent:true,opacity:.24,depthWrite:false}));
@@ -765,6 +771,197 @@ function setCarPose(car,x,z,heading,steering=0){
   car.rotation.y=-heading;
   for(const frontWheel of (car.userData.frontWheels||[]))frontWheel.rotation.y=-steering;
 }
+// Arcade combat uses four per-driver pickup clocks. A collected tile remains
+// available to every other racer, and respawns for its collector after 12s.
+function makeStunCloud(){
+  const group=new THREE.Group();
+  const tones=[0xf0f1e9,0xdde9e3,0xc0d5d2,0xe9f0ea,0xd6dfda];
+  const coordinates=[[-5,0,0],[0,2,0],[5,0,0],[-2,3,3],[3,3,-3]];
+  coordinates.forEach(([x,y,z],i)=>{
+    const ball=new THREE.Mesh(new THREE.SphereGeometry(i===1?4.3:3.4,10,8),new THREE.MeshBasicMaterial({color:tones[i],transparent:true,opacity:.83,depthWrite:false}));
+    ball.position.set(x,y,z);group.add(ball);
+  });
+  return group;
+}
+function createBombPickups(){
+  combat.pickupMeshes=[];
+  for(const pickup of BOMB_PICKUPS){
+    const group=new THREE.Group();group.position.set(pickup.pos.x,0,pickup.pos.z);
+    const pad=new THREE.Mesh(new THREE.CylinderGeometry(6.4,6.4,.6,6),new THREE.MeshStandardMaterial({color:0xe8b45f,emissive:0x976121,emissiveIntensity:.38,metalness:.5,roughness:.26}));
+    pad.position.y=.6;group.add(pad);
+    const tile=new THREE.Mesh(new THREE.BoxGeometry(8,.35,8),new THREE.MeshStandardMaterial({color:0xf5da8b,emissive:0xb78b34,emissiveIntensity:.34}));
+    tile.rotation.y=Math.PI/4;tile.position.y=1.1;group.add(tile);
+    const bomb=new THREE.Group();bomb.position.y=5.5;group.add(bomb);
+    const ball=new THREE.Mesh(new THREE.SphereGeometry(2.5,14,12),new THREE.MeshStandardMaterial({color:0x17272b,metalness:.6,roughness:.27}));bomb.add(ball);
+    const fuse=new THREE.Mesh(new THREE.CylinderGeometry(.47,.47,2.4,8),new THREE.MeshStandardMaterial({color:0xf0bd50,emissive:0xcd5c1b,emissiveIntensity:.8}));fuse.position.y=3;bomb.add(fuse);
+    const spark=new THREE.Mesh(new THREE.SphereGeometry(.76,8,8),new THREE.MeshBasicMaterial({color:0xfff2ae}));spark.position.y=4.25;bomb.add(spark);
+    group.userData.bomb=bomb;worldObjects.add(group);combat.pickupMeshes.push(group);
+  }
+}
+function resetCombatRound(roster=[]){
+  combat.held=0;combat.readyAt=[0,0,0,0];combat.pending=-1;combat.requestAt=0;
+  combat.projectiles.forEach(shot=>{if(shot.mesh){shot.mesh.parent?.remove(shot.mesh);disposeObject(shot.mesh);}});
+  combat.projectiles=[];combat.shotIds=new Set();combat.nextShot=0;combat.localStunUntil=0;
+  combat.hostInventory=new Map();combat.pendingFire=false;
+  for(const p of roster)if(p?.id)combat.hostInventory.set(p.id,{held:0,readyAt:[0,0,0,0]});
+  for(const op of opponents.values())op.stunnedUntil=0;
+  updateBombHud();
+}
+function getLocalId(){return raceState.peer?.id||'local';}
+function getHostInventory(id){
+  if(!combat.hostInventory.has(id))combat.hostInventory.set(id,{held:0,readyAt:[0,0,0,0]});
+  return combat.hostInventory.get(id);
+}
+function updateBombHud(){
+  const element=$('bombValue');if(!element)return;
+  element.textContent=combat.held?'1 READY':'EMPTY';
+  element.classList.toggle('armed',!!combat.held);
+  $('throwButton').disabled=!combat.held||!raceStarted||player.finished;
+  $('touchBomb').disabled=!combat.held||!raceStarted||player.finished;
+}
+function checkBombPickup(){
+  if(!raceStarted||player.finished||combat.held||combat.pending>=0)return;
+  const now=Date.now();
+  for(const pickup of BOMB_PICKUPS){
+    if(combat.readyAt[pickup.index]>now)continue;
+    if(Math.hypot(player.x-pickup.pos.x,player.z-pickup.pos.z)>11)continue;
+    if(raceState.role==='guest'){
+      if(now-combat.requestAt<520)return;
+      combat.pending=pickup.index;combat.requestAt=now;
+      send(raceState.hostConn,{type:'pickup-request',round:raceState.round,index:pickup.index});
+      // A lost packet must never block future pickups indefinitely.
+      setTimeout(()=>{if(combat.pending===pickup.index)combat.pending=-1;},1000);
+    }else hostTryPickup(getLocalId(),pickup.index,{x:player.x,z:player.z});
+    return;
+  }
+}
+function hostTryPickup(id,index,point){
+  if(!raceStarted||raceMode!=='arcade'||!Number.isInteger(index)||index<0||index>=BOMB_PICKUPS.length)return;
+  const record=getHostInventory(id),pickup=BOMB_PICKUPS[index],now=Date.now();
+  if(record.held||now<record.readyAt[index])return;
+  if(!point||Math.hypot(point.x-pickup.pos.x,point.z-pickup.pos.z)>20)return;
+  record.held=1;record.readyAt[index]=now+BOMB_RESPAWN_MS;
+  if(id===getLocalId())receivePickup({index});
+  else send(raceState.connections.get(id),{type:'pickup-granted',round:raceState.round,index});
+}
+function receivePickup(msg){
+  if(!Number.isInteger(msg.index)||msg.index<0||msg.index>=BOMB_PICKUPS.length)return;
+  combat.pending=-1;combat.held=1;combat.readyAt[msg.index]=Date.now()+BOMB_RESPAWN_MS;
+  announce('BOMB COLLECTED\nPRESS L TO LAUNCH',1.9);
+  updateBombHud();
+}
+function combatPositions(){
+  const positions=new Map([[getLocalId(),{x:player.x,z:player.z,heading:player.heading,speed:player.speed}]]);
+  if(raceState.role==='host'){
+    for(const [id,p] of (raceState._latest||new Map()))positions.set(id,p);
+  }else for(const [id,op] of opponents)positions.set(id,op);
+  return positions;
+}
+function chooseBombTarget(shooterId,origin,positions){
+  let bestId=null,bestScore=Infinity;
+  for(const [id,target] of positions){
+    if(id===shooterId||!target||!Number.isFinite(target.x)||!Number.isFinite(target.z))continue;
+    const dx=target.x-origin.x,dz=target.z-origin.z,d=Math.hypot(dx,dz);
+    if(d<8||d>BOMB_RANGE)continue;
+    const alignment=(dx*Math.sin(origin.heading)-dz*Math.cos(origin.heading))/d;
+    if(alignment<.68)continue; // car must be in a 94-degree forward cone
+    const score=d+(1-alignment)*65;
+    if(score<bestScore){bestScore=score;bestId=id;}
+  }
+  return bestId;
+}
+function fireBomb(){
+  if(raceMode!=='arcade'||!raceStarted||player.finished||!keysAllowed()||!combat.held||combat.pendingFire||Date.now()<combat.localStunUntil)return;
+  if(raceState.role==='guest'){
+    combat.pendingFire=true;
+    send(raceState.hostConn,{type:'bomb-request',round:raceState.round});
+    setTimeout(()=>{combat.pendingFire=false;},1150);
+  }else hostFireBomb(getLocalId());
+}
+function hostFireBomb(id){
+  if(!raceStarted||raceMode!=='arcade')return;
+  const record=getHostInventory(id);if(record.held!==1)return;
+  const positions=combatPositions(),origin=positions.get(id);
+  if(!origin||!Number.isFinite(origin.x)||!Number.isFinite(origin.z)||!Number.isFinite(origin.heading))return;
+  record.held=0;
+  const targetId=chooseBombTarget(id,origin,positions);
+  const number=++combat.nextShot;
+  const packet={type:'bomb-fired',round:raceState.round,id:`${raceState.round}-${id}-${number}`,shooter:id,target:targetId,
+    x:origin.x+Math.sin(origin.heading)*11,z:origin.z-Math.cos(origin.heading)*11,heading:origin.heading};
+  receiveBombFired(packet);if(raceState.role==='host')broadcast(packet);
+}
+function createBombMesh(){
+  const grp=new THREE.Group();
+  const sphere=new THREE.Mesh(new THREE.SphereGeometry(3.6,16,12),new THREE.MeshStandardMaterial({color:0x152429,metalness:.5,roughness:.24}));grp.add(sphere);
+  const fuse=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,2.6,8),new THREE.MeshBasicMaterial({color:0xffc45d}));fuse.position.y=4;grp.add(fuse);
+  const flame=new THREE.Mesh(new THREE.SphereGeometry(.95,8,8),new THREE.MeshBasicMaterial({color:0xffffba}));flame.position.y=5.5;grp.add(flame);
+  scene.add(grp);return grp;
+}
+function receiveBombFired(msg){
+  if(typeof msg.id!=='string'||combat.shotIds.has(msg.id)||!Number.isFinite(msg.x)||!Number.isFinite(msg.z))return;
+  combat.shotIds.add(msg.id);
+  const shot={id:msg.id,x:msg.x,z:msg.z,heading:msg.heading||0,shooter:msg.shooter,target:msg.target,age:0,mesh:createBombMesh(),alive:true};
+  combat.projectiles.push(shot);
+  if(msg.shooter===getLocalId()){
+    combat.held=0;combat.pendingFire=false;updateBombHud();
+    announce(msg.target?'HOMING BOMB AWAY!':'BOMB AWAY!',1.1);
+  }
+}
+function applyBombHit(msg){
+  if(typeof msg.target!=='string')return;
+  if(msg.target===getLocalId()){
+    combat.localStunUntil=Math.max(combat.localStunUntil,Date.now()+BOMB_STUN_MS);
+    player.speed=0;clearKeys();announce('SMOKE HIT!\nSTUNNED FOR 3 SECONDS',2.5);
+  }else{
+    const other=opponents.get(msg.target);
+    if(other)other.stunnedUntil=Math.max(other.stunnedUntil,Date.now()+BOMB_STUN_MS);
+  }
+  const shot=combat.projectiles.find(p=>p.id===msg.id);
+  if(shot)shot.alive=false;
+}
+function updateCombat(dt,now){
+  const actualNow=Date.now();
+  if(raceMode!=='arcade')return;
+  for(const [i,group] of combat.pickupMeshes.entries()){
+    if(!group)continue;
+    group.visible=actualNow>=combat.readyAt[i];
+    group.userData.bomb.rotation.y+=dt*.95;
+    group.userData.bomb.position.y=5.5+Math.sin(now*.003+i*1.7)*.8;
+  }
+  if(player.mesh?.userData.stunCloud){
+    const cloud=player.mesh.userData.stunCloud;
+    cloud.visible=actualNow<combat.localStunUntil;
+    if(cloud.visible)cloud.rotation.y+=dt*.8;
+  }
+  for(const op of opponents.values()){
+    const cloud=op.mesh?.userData.stunCloud;
+    if(cloud){cloud.visible=actualNow<(op.stunnedUntil||0);if(cloud.visible)cloud.rotation.y+=dt*.8;}
+  }
+  const participants=(raceState.role==='guest'?null:combatPositions());
+  for(let i=combat.projectiles.length-1;i>=0;i--){
+    const shot=combat.projectiles[i];shot.age+=dt;
+    const target=participants?.get(shot.target)||opponents.get(shot.target);
+    if(shot.alive&&target){
+      const desired=Math.atan2(target.x-shot.x,-(target.z-shot.z));
+      shot.heading+=clamp(signedAngle(desired,shot.heading),-2.7*dt,2.7*dt);
+    }
+    const distance=175*dt;
+    shot.x+=Math.sin(shot.heading)*distance;shot.z-=Math.cos(shot.heading)*distance;
+    if(shot.mesh){shot.mesh.position.set(shot.x,6.3+Math.sin(shot.age*11)*1.6,shot.z);shot.mesh.rotation.y+=dt*5;}
+    if(shot.alive&&participants&&shot.target){
+      const victim=participants.get(shot.target);
+      if(victim&&Math.hypot(shot.x-victim.x,shot.z-victim.z)<14){
+        const hit={type:'bomb-hit',round:raceState.round,id:shot.id,target:shot.target};
+        applyBombHit(hit);if(raceState.role==='host')broadcast(hit);
+      }
+    }
+    if(!shot.alive||shot.age>3.2){
+      if(shot.mesh){scene.remove(shot.mesh);disposeObject(shot.mesh);}
+      combat.projectiles.splice(i,1);
+    }
+  }
+}
+
 function newScene(){
   if(!renderer){
     renderer=new THREE.WebGLRenderer({canvas:viewport,antialias:true,alpha:false,powerPreference:'high-performance'});
@@ -781,14 +978,15 @@ function newScene(){
   const ambientFill=new THREE.DirectionalLight(0xb8e4d8,.35);ambientFill.position.set(300,130,-300);scene.add(ambientFill);
   stadiumDecor.grandstands.length=0;
   worldObjects=new THREE.Group();scene.add(worldObjects);
+  combat.pickupMeshes=[];
   addTrack();
   stationData.forEach(createServiceLane);
-  if(raceMode==='arcade')placeArcadeBoostPads();
+  if(raceMode==='arcade'){placeArcadeBoostPads();createBombPickups();}
   addTreesAndLandscape();
   addGuardRails();
   addStadiumArchitecture();
   player.mesh=makeCar(player.colour);scene.add(player.mesh);
-  for(const state of opponents.values()){state.mesh=makeCar(state.colour,state.name);scene.add(state.mesh);}
+  for(const state of opponents.values()){state.mesh=makeCar(state.colour,state.name);scene.add(state.mesh);state.visualReady=false;}
   resizeRenderer();
   if(!compatibilityRenderer)compatibilityRenderer=new CompatibilityTrackRenderer($('compatCanvas'),trackPoints,trackTangents);
   compatibilityRenderer.setPits(stationData);
@@ -841,6 +1039,7 @@ function setMode(mode){
   $('lapLabel').textContent=mode==='tour'?'LAPS DRIVEN':'RACE LAPS';
   $('fuelHint').textContent='≈ 2 full-speed laps / tank';
   $('boostHud').hidden=mode!=='arcade';
+  $('bombHud').hidden=mode!=='arcade';$('throwButton').hidden=mode!=='arcade';$('touchBomb').hidden=mode!=='arcade';
   $('pitCount').textContent=mode==='tour'?`${stationData.length} PIT STOPS`:'1 PIT STOP';
   $('mapMode').textContent=mode==='tour'?`${stationData.length} STOPS`:'ARCADE';
   $('raceLeftInfo').hidden=false;
@@ -857,6 +1056,10 @@ function updatePhysics(dt){
   if(!gameRunning||!raceStarted||inspector||!$('raceGuide').hidden||raceEnded)return;
   dt=Math.min(dt,.04);
   player.elapsed+=dt;
+  if(raceMode==='arcade' && Date.now()<combat.localStunUntil){
+    player.speed=0;player.boosting=false;player.braking=true;player.steer=0;player.steerAngle=0;
+    setCarPose(player.mesh,player.x,player.z,player.heading,0);return;
+  }
   const track=getTrackClosest(player.x,player.z),pit=nearestPit(player.x,player.z);
   const pitLane=pit.dist<PIT_HALF+1&&(track.dist>ROAD_HALF-2||pit.dist<track.dist-6);
   player.inPit=pitLane;
@@ -915,6 +1118,7 @@ function updatePhysics(dt){
   if(!player._fuelWarn&&player.fuel<=.22&&player.fuel>0){player._fuelWarn=true;announce('LOW FUEL\nFIND A PIT LANE',2.3);}
   if(player.fuel===0&&!player._emptyWarn){player._emptyWarn=true;announce('OUT OF FUEL\nPRESS T FOR PIT TOW',3.2);}
   setCarPose(player.mesh,player.x,player.z,player.heading,player.steerAngle||0);
+  if(raceMode==='arcade')checkBombPickup();
 }
 function updatePitProgress(pit,track){
   const p=pit.pit;
@@ -964,13 +1168,25 @@ function updateLaps(pit,track,dt){
   player.priorU=u;player.u=u;
 }
 function updateOpponentMeshes(dt){
-  for(const [id,op] of opponents){
+  // Physics heading is opposite Three.js yaw. Always interpolate towards
+  // -heading; the old +heading target caused the remote-only sideways drift.
+  for(const op of opponents.values()){
     if(!op.mesh)continue;
-    const factor=1-Math.exp(-dt*10);
-    op.mesh.position.x=THREE.MathUtils.lerp(op.mesh.position.x,op.x,factor);
-    op.mesh.position.z=THREE.MathUtils.lerp(op.mesh.position.z,op.z,factor);
-    let diff=((op.heading-op.mesh.rotation.y+Math.PI)%TWO_PI+TWO_PI)%TWO_PI-Math.PI;
-    op.mesh.rotation.y+=diff*factor;
+    const factor=1-Math.exp(-dt*14);
+    const targetYaw=-op.heading;
+    if(!op.visualReady){
+      setCarPose(op.mesh,op.x,op.z,op.heading,op.steering||0);op.visualReady=true;
+    }else{
+      // A brief velocity estimate absorbs the 10 Hz network snapshot cadence.
+      // Clamp it so stale network traffic never causes large teleports.
+      const age=Math.min(.12,Math.max(0,(performance.now()-(op.receivedAt||performance.now()))/1000));
+      const dx=Math.sin(op.heading)*(op.speed||0)*age;
+      const dz=-Math.cos(op.heading)*(op.speed||0)*age;
+      op.mesh.position.x=THREE.MathUtils.lerp(op.mesh.position.x,op.x+dx,factor);
+      op.mesh.position.z=THREE.MathUtils.lerp(op.mesh.position.z,op.z+dz,factor);
+      op.mesh.rotation.y+=signedAngle(targetYaw,op.mesh.rotation.y)*factor;
+      for(const wheel of (op.mesh.userData.frontWheels||[]))wheel.rotation.y=THREE.MathUtils.lerp(wheel.rotation.y,-(op.steering||0),factor);
+    }
   }
 }
 function updateCamera(dt){
@@ -1079,6 +1295,7 @@ function updateMinimap(){
   }
   const start=trackCurve.getPointAt(0),[sx,sy]=at(start);
   ctx.strokeStyle='#dce99a';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(sx,sy,3.2,0,TWO_PI);ctx.stroke();
+  if(raceMode==='arcade')for(const pickup of BOMB_PICKUPS){const [x,y]=at(pickup.pos);ctx.fillStyle=Date.now()<combat.readyAt[pickup.index]?'#536461':'#ffcd69';ctx.fillRect(x-2.8,y-2.8,5.6,5.6);}
   for(const o of opponents.values()){const [x,y]=at(o);ctx.fillStyle=o.hex||'#f3ae85';ctx.beginPath();ctx.arc(x,y,3.4,0,TWO_PI);ctx.fill();}
   const [x,y]=at(player);ctx.save();ctx.translate(x,y);ctx.rotate(-player.heading);ctx.shadowBlur=7;ctx.shadowColor='#d8f58b';
   ctx.fillStyle='#d7f484';ctx.strokeStyle='#0a2729';ctx.lineWidth=1.8;
@@ -1094,7 +1311,7 @@ function tick(now){
       if(left<=0){countdownEnd=0;raceStarted=true;raceState.started=true;announce('GO! GO! GO!',1.5);}
       else if(left<=3.95){const count=Math.max(1,Math.ceil(left));const text=`${count}`;if(currentBanner!==text||showBannerUntil<now)announce(text,.82);}
     }
-    updatePhysics(dt);updateOpponentMeshes(dt);updateCamera(dt);
+    updatePhysics(dt);updateOpponentMeshes(dt);updateCombat(dt,now);updateCamera(dt);
     if(!compatibilityActive){
       try {renderer.render(scene,camera);}
       catch(error){console.warn('WebGL draw failed',error);setCompatibility(true,'WebGL render failure');}
@@ -1105,11 +1322,11 @@ function tick(now){
       }
     }
     if(compatibilityActive&&now-lastCompatibilityFrame>34){
-      compatibilityRenderer.render({camera,player,opponents,inspector,mode:raceMode});
+      compatibilityRenderer.render({camera,player,opponents,inspector,mode:raceMode,combat:{...combat,pickups:BOMB_PICKUPS},now:Date.now()});
       lastCompatibilityFrame=now;
     }
     hudClock+=dt;texturesClock+=dt;minimapClock+=dt;networkClock+=dt;
-    if(hudClock>.13){updateDashboard();updateClosestBoard();hudClock=0;}
+    if(hudClock>.13){updateDashboard();updateClosestBoard();if(raceMode==='arcade')updateBombHud();hudClock=0;}
     if(texturesClock>.9){refreshVisiblePosters();texturesClock=0;}
     if(minimapClock>.16){updateMinimap();minimapClock=0;}
     if(networkClock>.095){networkTick();networkClock=0;}
@@ -1133,6 +1350,7 @@ function parseRoomCode(text){
   return raw.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
 }
 function resetNetwork(){
+  resetCombatRound([]);
   if(raceState.peer){try{raceState.peer.destroy();}catch{}}
   raceState.peer=null;raceState.hostConn=null;raceState.connections.clear();raceState.remote.clear();raceState.finishers.clear();
   raceState.role='solo';raceState.hostId='';raceState.roomCode='';raceState.joined=false;raceState.started=false;raceState.pendingStart=null;raceState.round=0;raceState.roster=[];raceState.ready=new Set();raceState._latest=new Map();countdownEnd=0;clearKeys();
@@ -1166,11 +1384,11 @@ function ensureOpponent(id,name,colourIndex){
   if(!opponent){
     const c=CAR_COLOURS[(colourIndex+1)%CAR_COLOURS.length];const p=trackCurve.getPointAt(INITIAL_POS);
     opponent={id,name:cleanName(name),x:p.x,z:p.z,heading:getHeading(trackCurve.getTangentAt(INITIAL_POS)),speed:0,lap:0,finished:false,
-      colour:c,hex:'#'+new THREE.Color(c).getHexString(),mesh:null};
+      colour:c,hex:'#'+new THREE.Color(c).getHexString(),mesh:null,visualReady:false,steering:0,receivedAt:0,stunnedUntil:0};
     opponents.set(id,opponent);
   }
   opponent.name=cleanName(name);
-  if(sceneReady&&raceMode==='arcade'&&!opponent.mesh){opponent.mesh=makeCar(opponent.colour,opponent.name);scene.add(opponent.mesh);setCarPose(opponent.mesh,opponent.x,opponent.z,opponent.heading);}
+  if(sceneReady&&raceMode==='arcade'&&!opponent.mesh){opponent.mesh=makeCar(opponent.colour,opponent.name);scene.add(opponent.mesh);setCarPose(opponent.mesh,opponent.x,opponent.z,opponent.heading);opponent.visualReady=true;}
   return opponent;
 }
 function applyRoster(players){
@@ -1193,7 +1411,7 @@ function applyRoster(players){
 function sharedSnapshot(){
   return {id:raceState.peer?.id,name:raceState.name,x:Math.round(player.x*10)/10,z:Math.round(player.z*10)/10,
     heading:+player.heading.toFixed(3),speed:+player.speed.toFixed(1),lap:player.lap,fuel:+player.fuel.toFixed(3),
-    finished:player.finished,time:localFinishTime};
+    steering:+player.steerAngle.toFixed(3),stunned:Date.now()<combat.localStunUntil,finished:player.finished,time:localFinishTime};
 }
 function consumeSnapshot(p){
   if(!p||typeof p.id!=='string'||p.id===raceState.peer?.id)return;
@@ -1202,7 +1420,7 @@ function consumeSnapshot(p){
   if(!raceState.remote.has(p.id))raceState.remote.set(p.id,{name:cleanName(p.name),lap:0});
   const s=raceState.remote.get(p.id);s.lap=Math.max(0,Math.min(200,Number(p.lap)||0));s.finished=!!p.finished;s.time=p.time||null;
   const op=ensureOpponent(p.id,s.name,[...raceState.remote.keys()].indexOf(p.id));
-  if(op){op.x=p.x;op.z=p.z;op.heading=p.heading;op.lap=s.lap;op.finished=s.finished;}
+  if(op){op.x=p.x;op.z=p.z;op.heading=p.heading;op.speed=clamp(Number(p.speed)||0,-19,100);op.steering=clamp(Number(p.steering)||0,-.5,.5);op.receivedAt=performance.now();op.lap=s.lap;op.finished=s.finished;}
   if(s.finished&&s.time)raceState.finishers.set(p.id,{name:s.name,time:s.time});
   if(!$('finishOverlay').hidden)renderResults();
 }
@@ -1221,6 +1439,12 @@ function attachHostConnection(conn){
   conn.on('data',msg=>{
     if(!msg||typeof msg!=='object')return;
     if(msg.type==='ready'&&msg.round===raceState.round){raceState.ready.add(conn.peer);return;}
+    if(msg.type==='pickup-request'&&raceStarted&&msg.round===raceState.round){
+      const position=raceState._latest?.get(conn.peer);
+      if(position&&Number.isFinite(position.x)&&Number.isFinite(position.z))hostTryPickup(conn.peer,msg.index,position);
+      return;
+    }
+    if(msg.type==='bomb-request'&&raceStarted&&msg.round===raceState.round){hostFireBomb(conn.peer);return;}
     if(msg.type==='hello'){
       if(msg.protocol!==NETWORK_PROTOCOL){send(conn,{type:'reject',reason:'Your racing game is out of date. Refresh this page, then rejoin the room.'});return;}
       if(raceStarted||raceState.started){send(conn,{type:'reject',reason:'This race has already started.'});return;}
@@ -1308,6 +1532,9 @@ function handleGuestMessage(msg){
     send(raceState.hostConn,{type:'ready',round:raceState.round});
   }
   if(msg.type==='snapshot'&&msg.round===raceState.round&&Array.isArray(msg.players))for(const state of msg.players)consumeSnapshot(state);
+  if(msg.type==='pickup-granted'&&msg.round===raceState.round)receivePickup(msg);
+  if(msg.type==='bomb-fired'&&msg.round===raceState.round)receiveBombFired(msg);
+  if(msg.type==='bomb-hit'&&msg.round===raceState.round)applyBombHit(msg);
   if(msg.type==='results'&&msg.round===raceState.round&&Array.isArray(msg.finishers)){
     for(const record of msg.finishers){if(Array.isArray(record)&&record.length===2)raceState.finishers.set(record[0],record[1]);}
     renderResults();
@@ -1337,7 +1564,8 @@ function resetRoundToLobby(){
   raceStarted=false;raceState.started=false;raceEnded=false;countdownEnd=0;raceState.ready.clear();
   raceState.finishers.clear();raceState._latest=new Map();
   for(const remote of raceState.remote.values()){remote.lap=0;remote.finished=false;remote.time=null;}
-  for(const op of opponents.values()){op.lap=0;op.finished=false;op.speed=0;}
+  resetCombatRound(raceState.roster);
+  for(const op of opponents.values()){op.lap=0;op.finished=false;op.speed=0;op.stunnedUntil=0;op.visualReady=false;}
   clearKeys();resetPlayer(INITIAL_POS,true);
   $('finishOverlay').hidden=true;$('lobbyOverlay').hidden=false;$('waitingRoom').hidden=false;
   $('roomStatus').textContent='GRID RESET · WAITING FOR START';
@@ -1354,6 +1582,7 @@ function beginArcadeRace(options={}){
   raceState.roster=roster.map(p=>({id:p.id,name:p.name}));
   raceState.ready=new Set();raceState.finishers.clear();raceState._latest=new Map();
   for(const state of raceState.remote.values()){state.lap=0;state.finished=false;state.time=null;}
+  resetCombatRound(roster);
   const myId=raceState.peer?.id||'local';
   roster.forEach((p,i)=>{
     const start=gridPosition(i);
@@ -1362,12 +1591,12 @@ function beginArcadeRace(options={}){
       setCarPose(player.mesh,player.x,player.z,player.heading,player.steerAngle||0);
     }else{
       const op=ensureOpponent(p.id,p.name,i);
-      if(op){op.x=start.x;op.z=start.z;op.heading=start.heading;op.speed=0;op.lap=0;op.finished=false;
+      if(op){op.x=start.x;op.z=start.z;op.heading=start.heading;op.speed=0;op.lap=0;op.finished=false;op.visualReady=false;
         if(op.mesh)setCarPose(op.mesh,op.x,op.z,op.heading);}
     }
   });
   player.elapsed=0;player.lapAt=0;player.lap=0;player.travel=0;player.fuel=1;player.speed=0;player.steer=0;
-  player.finished=false;player._emptyWarn=false;player._fuelWarn=false;localFinishTime=null;
+  player.finished=false;player._emptyWarn=false;player._fuelWarn=false;localFinishTime=null;updateBombHud();
   raceStarted=false;raceState.started=true;raceEnded=false;
   countdownEnd=performance.now()+Math.max(2100,launchAt-Date.now());
   $('finishOverlay').hidden=true;$('welcomeOverlay').hidden=true;
@@ -1417,6 +1646,7 @@ function setupEvents(){
   $('showGuide').addEventListener('click',()=>showGuide(true));$('guideClose').addEventListener('click',()=>showGuide(false));
   $('inspectButton').addEventListener('click',toggleInspect);
   $('towButton').addEventListener('click',pitTow);
+  $('throwButton').addEventListener('click',fireBomb);$('touchBomb').addEventListener('click',fireBomb);
   $('cameraButton').addEventListener('click',toggleCamera);
   $('renderModeButton').addEventListener('click',()=>{
     if(compatibilityActive){setCompatibility(false);rendererCheckCount=0;rendererBlankCount=0;lastModeChange=performance.now()-1300;}
@@ -1448,6 +1678,7 @@ function setupEvents(){
     if((e.key==='e'||e.key==='E')&&keysAllowed()&&!e.repeat){toggleInspect();e.preventDefault();}
     else if((e.key==='e'||e.key==='E')&&inspector&&!e.repeat){toggleInspect();e.preventDefault();}
     if((e.key==='c'||e.key==='C')&&keysAllowed()&&!e.repeat){toggleCamera();e.preventDefault();}
+    if((e.key==='l'||e.key==='L')&&keysAllowed()&&!e.repeat){fireBomb();e.preventDefault();}
     if((e.key==='p'||e.key==='P')&&gameRunning&&raceMode==='tour'&&!e.repeat){showGuide($('raceGuide').hidden);e.preventDefault();}
     if((e.key==='t'||e.key==='T')&&keysAllowed()&&!e.repeat){pitTow();e.preventDefault();}
     if(e.key==='Escape'){
@@ -1486,5 +1717,5 @@ window.RC_GAME_STATUS=()=>({mode:raceMode,gameRunning,raceStarted,
   round:raceState.round,networkRole:raceState.role,remotePlayers:raceState.remote.size,
   countdownMs:Math.max(0,Math.round(countdownEnd-performance.now())),
   position:{x:player.x,z:player.z},speed:player.speed,steer:player.steer,
-  fuel:player.fuel,lap:player.lap,keys:{...keys},compatible:compatibilityActive});
+  fuel:player.fuel,lap:player.lap,bombs:combat.held,stunnedMs:Math.max(0,combat.localStunUntil-Date.now()),keys:{...keys},compatible:compatibilityActive});
 initialise();

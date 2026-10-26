@@ -12,10 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="city.css?v=10">
+  <link rel="stylesheet" href="city.css?v=11">
   <script src="rc-resume-data.js?v=8" defer></script>
+  <script src="rc-network-config.js?v=11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-  <script type="module">import("./rc-race.js?v=10").catch(err => { document.getElementById("sceneErrorText").textContent = "Unable to load the 3D renderer: " + (err.message || err); document.getElementById("sceneError").hidden = false; });</script>
+  <script type="module">import("./rc-race.js?v=11").catch(err => { document.getElementById("sceneErrorText").textContent = "Unable to load the 3D renderer: " + (err.message || err); document.getElementById("sceneError").hidden = false; });</script>
 </head>
 <body class="rc-page">
 <a class="skip-link" href="index.html">Skip racing and read the accessible text resume</a>
@@ -57,7 +58,7 @@
   <div class="lobby-panel"><button class="overlay-back" id="lobbyBack" type="button">← BACK TO MODES</button><div class="eyebrow">THE STARTING GRID / ONLINE</div><h2 id="lobbyTitle">RACE WITH<br><em>YOUR PEOPLE.</em></h2><p class="lobby-intro">Host an RC Grand Prix in your own browser. Share a short code or invite link; everyone races together on this circuit.</p>
     <label class="field-label" for="playerName">DRIVER NAME</label><input id="playerName" maxlength="18" placeholder="Your racing name" autocomplete="nickname" value="Driver">
     <div class="lobby-columns"><section class="lobby-side"><h3>HOST A GRAND PRIX</h3><label class="field-label" for="lapSelect">RACE DISTANCE</label><select id="lapSelect"><option value="2">2 laps / Sprint</option><option value="3" selected>3 laps / Quick race</option><option value="5">5 laps / Grand Prix</option><option value="8">8 laps / Endurance</option><option value="12">12 laps / Marathon</option></select><button id="hostButton" class="primary-action" type="button">CREATE ROOM →</button></section><section class="lobby-side"><h3>JOIN FRIENDS</h3><label class="field-label" for="roomInput">ROOM CODE OR INVITE LINK</label><input id="roomInput" placeholder="e.g. K7J3QP" autocomplete="off" autocapitalize="characters"><button id="joinButton" class="secondary-action" type="button">JOIN ROOM →</button></section></div>
-    <section id="waitingRoom" class="waiting-room" hidden><div class="waiting-top"><div><span class="eyebrow">LIVE ROOM</span><strong id="roomCode">------</strong></div><button id="copyInvite" type="button">COPY INVITE LINK ↗</button></div><div class="room-status" id="roomStatus">Connecting…</div><div class="lobby-racers" id="lobbyRacers"></div><button id="launchRace" class="primary-action" type="button" disabled>START THE RACE →</button><p class="waiting-note">The host keeps this room alive; drivers can join before the race starts. Best for a small group of friends.</p></section>
+    <section id="waitingRoom" class="waiting-room" hidden><div class="waiting-top"><div><span class="eyebrow">LIVE ROOM</span><strong id="roomCode">------</strong></div><button id="copyInvite" type="button">COPY INVITE LINK ↗</button></div><div class="room-status" id="roomStatus">Connecting…</div><div class="lobby-racers" id="lobbyRacers"></div><button id="launchRace" class="primary-action" type="button" disabled>START THE RACE →</button><p class="waiting-note">The host must keep this tab open. Only share the link once the status says ROOM OPEN.</p><p class="waiting-note" id="networkHint">Global internet play may require a TURN relay. See RC_GLOBAL_MULTIPLAYER.md.</p></section>
     <div class="lobby-footer"><button id="soloButton" type="button">OR PLAY ARCADE SOLO →</button><span id="lobbyError" role="status" aria-live="polite"></span></div>
   </div>
 </div>

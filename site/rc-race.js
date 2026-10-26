@@ -43,6 +43,7 @@ let lastModeChange = 0;
 let lastFrameDt = 0;
 let localFinishTime = null;
 let raceSettings = { laps: 3 };
+let networkGeneration = 0;
 let resume = window.RC_RESUME_SNAPSHOT || [];
 const keys = { up: false, down: false, left: false, right: false, brake: false, boost: false };
 const touchPointers = new Map();
@@ -1349,7 +1350,80 @@ function parseRoomCode(text){
   try{const url=new URL(raw);return String(url.searchParams.get('room')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);}catch{}
   return raw.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
 }
+// Global play needs both signalling (PeerJS) and a viable WebRTC ICE path.
+// A STUN-only connection works on many networks, but some NATs require TURN.
+const PUBLIC_STUN_SERVERS = [
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
+  {urls:'stun:stun.cloudflare.com:3478'},
+];
+function relayConfigured(){return Boolean(String(window.RC_MULTIPLAYER_CONFIG?.turnCredentialUrl||'').trim());}
+function networkHelpText(connected=false){
+  if(connected)return relayConfigured()?'TURN relay configured · internet play enabled.':'STUN-only connection · global play depends on both networks.';
+  return relayConfigured()?'Retrieving global relay credentials…':'STUN-only: LAN and some internet connections work, but restrictive networks need TURN. See RC_GLOBAL_MULTIPLAYER.md.';
+}
+function setNetworkHelp(text){const hint=$('networkHint');if(hint)hint.textContent=text;}
+function humanPeerError(err,joining=false){
+  const type=err?.type||'unknown';
+  if(type==='peer-unavailable')return 'Host is not registered with the signalling service. Check the room code, that the host sees ROOM OPEN, and that they have not closed the tab.';
+  if(type==='network'||type==='socket-error'||type==='socket-closed'||type==='server-error')return 'Unable to reach the PeerJS signalling service. Check internet/firewall access, then try again.';
+  if(type==='webrtc')return 'WebRTC could not establish a connection across these networks. Configure TURN relay access in rc-network-config.js.';
+  if(type==='unavailable-id')return 'This room ID is already in use. Create a new room.';
+  return `${joining?'Join':'Hosting'} failed (${type}): ${err?.message||'unknown error'}`;
+}
+async function peerOptions(){
+  const endpoint=String(window.RC_MULTIPLAYER_CONFIG?.turnCredentialUrl||'').trim();
+  const options={debug:new URLSearchParams(location.search).has('rtcdebug')?2:0,config:{iceServers:PUBLIC_STUN_SERVERS}};
+  if(!endpoint)return options;
+  let parsed;
+  try{parsed=new URL(endpoint);}catch{throw new Error('TURN credential URL is invalid. Check rc-network-config.js.');}
+  if(parsed.protocol!=='https:')throw new Error('TURN credential URL must use HTTPS.');
+  const controller=new AbortController();const t=setTimeout(()=>controller.abort(),10000);
+  let response,servers;
+  try{
+    response=await fetch(parsed.href,{cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const payload=await response.json();
+    servers=Array.isArray(payload)?payload:payload?.iceServers;
+  }catch(e){throw new Error(`TURN credential request failed (${e.message}). Check the URL and network.`);}
+  finally{clearTimeout(t);}
+  if(!Array.isArray(servers)||!servers.length||servers.length>20)throw new Error('TURN endpoint returned no valid ICE servers.');
+  const verified=[];
+  for(const server of servers){
+    const urls=[server?.urls].flat().filter(u=>typeof u==='string'&&/^(stun|stuns|turn|turns):/i.test(u));
+    if(!urls.length)continue;
+    const entry={urls:urls.length===1?urls[0]:urls};
+    if(typeof server.username==='string')entry.username=server.username;
+    if(typeof server.credential==='string')entry.credential=server.credential;
+    verified.push(entry);
+  }
+  if(!verified.some(x=>[x.urls].flat().some(u=>/^turns?:/i.test(u))))throw new Error('TURN endpoint returned STUN servers only; TURN is needed for restrictive NATs.');
+  options.config.iceServers=verified;
+  return options;
+}
+function watchIceConnection(conn,session){
+  clearInterval(raceState._iceWatchTimer);let tries=0;
+  raceState._iceWatchTimer=setInterval(()=>{
+    if(session!==networkGeneration||conn!==raceState.hostConn){clearInterval(raceState._iceWatchTimer);return;}
+    const pc=conn.peerConnection;
+    if(!pc){if(++tries>=130)clearInterval(raceState._iceWatchTimer);return;}
+    clearInterval(raceState._iceWatchTimer);
+    const update=()=>{
+      if(session!==networkGeneration||raceState.joined)return;
+      if(pc.iceConnectionState==='failed'||pc.connectionState==='failed'){
+        setLobbyError('WebRTC connection failed across these networks. The host may be online, but a TURN relay is required. Configure rc-network-config.js.');
+        $('roomStatus').textContent='WEBRTC NETWORK PATH FAILED';
+      }
+    };
+    pc.addEventListener?.('iceconnectionstatechange',update);
+    pc.addEventListener?.('connectionstatechange',update);
+    update();
+  },180);
+}
 function resetNetwork(){
+  networkGeneration++;
+  clearTimeout(raceState._joinTimeout);clearTimeout(raceState._hostTimeout);clearTimeout(raceState._reconnectTimer);
+  clearInterval(raceState._iceWatchTimer);
   resetCombatRound([]);
   if(raceState.peer){try{raceState.peer.destroy();}catch{}}
   raceState.peer=null;raceState.hostConn=null;raceState.connections.clear();raceState.remote.clear();raceState.finishers.clear();
@@ -1471,52 +1545,98 @@ function attachHostConnection(conn){
     $('roomStatus').textContent=`ROOM OPEN · ${allParticipants().length} DRIVER(S) ON GRID`;
   });
 }
-function hostRoom(){
+async function hostRoom(){
   if(typeof window.Peer!=='function'){setLobbyError('Online networking did not load. Check your connection or use solo arcade.');return;}
-  resetNetwork();setLobbyError('');raceState.role='host';raceState.name=cleanName($('playerName').value);
+  resetNetwork();const session=networkGeneration;
+  setLobbyError('');raceState.role='host';raceState.name=cleanName($('playerName').value);
   raceSettings.laps=clamp(parseInt($('lapSelect').value,10)||3,2,12);
   const code=makeRoomCode();raceState.roomCode=code;raceState.hostId=roomId(code);
-  $('waitingRoom').hidden=false;$('roomCode').textContent=code;
-  $('roomStatus').textContent='CONTACTING PEERJS CLOUD SIGNALING…';
-  const peer=new window.Peer(raceState.hostId,{debug:0});raceState.peer=peer;
-  const timeout=setTimeout(()=>{if(!raceState.joined)setLobbyError('Signalling took too long. Retry creating a room, or use solo arcade.');},12000);
+  $('waitingRoom').hidden=false;$('roomCode').textContent=code;$('copyInvite').disabled=true;
+  $('roomStatus').textContent='SETTING UP ONLINE CONNECTION…';setNetworkHelp(networkHelpText());
+  let options;
+  try{options=await peerOptions();}catch(err){if(session===networkGeneration){setLobbyError(err.message);$('roomStatus').textContent='TURN CONFIGURATION ERROR';}return;}
+  if(session!==networkGeneration||raceState.role!=='host')return;
+  const peer=new window.Peer(raceState.hostId,options);raceState.peer=peer;
+  raceState._hostTimeout=setTimeout(()=>{
+    if(session===networkGeneration&&!raceState.joined){setLobbyError('Could not register this room with PeerJS signalling. Check internet access and retry.');$('roomStatus').textContent='SIGNALLING TIMED OUT';}
+  },20000);
   peer.on('open',()=>{
-    clearTimeout(timeout);raceState.joined=true;$('roomStatus').textContent='ROOM OPEN · SHARE THE LINK TO INVITE FRIENDS';
-    updateNetworkStatus('HOST / '+code);roomRoster();
+    if(session!==networkGeneration)return;
+    clearTimeout(raceState._hostTimeout);clearTimeout(raceState._reconnectTimer);
+    raceState.joined=true;setLobbyError('');$('copyInvite').disabled=false;
+    $('roomStatus').textContent='ROOM OPEN · SHARE THE LINK TO INVITE FRIENDS';
+    setNetworkHelp(networkHelpText(true));updateNetworkStatus('HOST / '+code);roomRoster();
   });
-  peer.on('connection',attachHostConnection);
-  peer.on('error',err=>{clearTimeout(timeout);setLobbyError(`Could not host (${err.type||'network error'}). Try again or play solo.`);$('roomStatus').textContent='SIGNALLING ERROR';});
-  peer.on('disconnected',()=>{updateNetworkStatus('SIGNALLING DISCONNECTED');});
+  peer.on('connection',conn=>{if(session===networkGeneration)attachHostConnection(conn);else conn.close();});
+  peer.on('error',err=>{
+    if(session!==networkGeneration)return;
+    clearTimeout(raceState._hostTimeout);setLobbyError(humanPeerError(err));
+    $('roomStatus').textContent='SIGNALLING ERROR';$('copyInvite').disabled=true;
+  });
+  peer.on('disconnected',()=>{
+    if(session!==networkGeneration)return;
+    raceState.joined=false;$('copyInvite').disabled=true;
+    $('roomStatus').textContent='SIGNALLING DISCONNECTED · RECONNECTING…';
+    updateNetworkStatus('SIGNALLING DISCONNECTED');
+    raceState._reconnectTimer=setTimeout(()=>{
+      if(session!==networkGeneration||peer.destroyed||!peer.disconnected)return;
+      try{peer.reconnect();}catch(e){setLobbyError('Lost signalling. Create a new room if reconnection fails.');}
+    },1800);
+  });
 }
-function joinRoom(){
+async function joinRoom(){
   const code=parseRoomCode($('roomInput').value);if(code.length<4){setLobbyError('Enter a valid room code or invite URL.');return;}
   if(typeof window.Peer!=='function'){setLobbyError('Online networking did not load. Check your connection or choose solo mode.');return;}
-  resetNetwork();setLobbyError('');raceState.role='guest';raceState.roomCode=code;raceState.hostId=roomId(code);
+  resetNetwork();const session=networkGeneration;
+  setLobbyError('');raceState.role='guest';raceState.roomCode=code;raceState.hostId=roomId(code);
   raceState.name=cleanName($('playerName').value);
-  $('waitingRoom').hidden=false;$('roomCode').textContent=code;$('roomStatus').textContent='FINDING THE HOST…';
-  const peer=new window.Peer({debug:0});raceState.peer=peer;
-  const timeout=setTimeout(()=>{if(!raceState.joined)setLobbyError('Could not find the host. Check the code and ensure the host has the room open.');},12000);
+  $('waitingRoom').hidden=false;$('roomCode').textContent=code;$('copyInvite').disabled=true;
+  $('roomStatus').textContent='SETTING UP ONLINE CONNECTION…';setNetworkHelp(networkHelpText());
+  let options;
+  try{options=await peerOptions();}catch(err){if(session===networkGeneration){setLobbyError(err.message);$('roomStatus').textContent='TURN CONFIGURATION ERROR';}return;}
+  if(session!==networkGeneration||raceState.role!=='guest')return;
+  const peer=new window.Peer(options);raceState.peer=peer;
+  let signallingReady=false,linkReady=false,joinFailed=false;
+  const fail=(message,status)=>{
+    if(session!==networkGeneration||raceState.joined)return;
+    joinFailed=true;setLobbyError(message);$('roomStatus').textContent=status;
+  };
+  raceState._joinTimeout=setTimeout(()=>{
+    if(session!==networkGeneration||raceState.joined||joinFailed)return;
+    if(!signallingReady)fail('PeerJS signalling did not respond. Check your connection or firewall.','SIGNALLING TIMED OUT');
+    else if(!linkReady)fail('The host may be online, but a WebRTC link could not be established. Different networks may require a TURN relay. Configure rc-network-config.js.','WEBRTC CONNECTIVITY TIMED OUT');
+    else fail('The host connection opened but the room did not confirm your join. Ask the host to create a new room.','HOST DID NOT RESPOND');
+  },27000);
   peer.on('open',()=>{
+    if(session!==networkGeneration)return;
+    signallingReady=true;
+    $('roomStatus').textContent='SIGNALLING OK · NEGOTIATING HOST CONNECTION…';
     const conn=peer.connect(raceState.hostId,{reliable:true,serialization:'json'});
-    raceState.hostConn=conn;
-    conn.on('open',()=>{send(conn,{type:'hello',protocol:NETWORK_PROTOCOL,name:raceState.name});$('roomStatus').textContent='CONNECTED · WAITING FOR THE HOST…';});
-    conn.on('data',msg=>handleGuestMessage(msg));
-    conn.on('error',err=>{setLobbyError('Unable to connect to this room: '+(err.message||'network problem'));});
+    raceState.hostConn=conn;watchIceConnection(conn,session);
+    conn.on('open',()=>{
+      if(session!==networkGeneration)return;
+      linkReady=true;joinFailed=false;setLobbyError('');
+      send(conn,{type:'hello',protocol:NETWORK_PROTOCOL,name:raceState.name});
+      $('roomStatus').textContent='WEBRTC LINK OPEN · CONFIRMING ROOM…';
+    });
+    conn.on('data',msg=>{if(session===networkGeneration)handleGuestMessage(msg);});
+    conn.on('error',err=>{fail('Data channel failed: '+(err.message||'WebRTC error')+'. Try TURN relay if you are on different networks.','WEBRTC ERROR');});
     conn.on('close',()=>{
+      if(session!==networkGeneration)return;
       raceState.joined=false;updateNetworkStatus('HOST DISCONNECTED');
       if(raceStarted)announce('HOST DISCONNECTED\nYOU CAN CONTINUE SOLO',3);
-      else setLobbyError('Connection to host was lost.');
+      else if(!joinFailed)fail('The WebRTC connection closed before joining. If you are on different networks, configure TURN relay access.','CONNECTION CLOSED');
     });
   });
-  peer.on('error',err=>{clearTimeout(timeout);setLobbyError(`Could not join (${err.type||'network error'}). Check the code and retry.`);});
-  raceState._joinTimeout=timeout;
+  peer.on('error',err=>{if(session===networkGeneration)fail(humanPeerError(err,true),err?.type==='peer-unavailable'?'HOST NOT REGISTERED':'NETWORK ERROR');});
+  peer.on('disconnected',()=>{if(session===networkGeneration&&!raceState.joined)fail('Disconnected from PeerJS signalling. Check internet access.','SIGNALLING DISCONNECTED');});
 }
 function handleGuestMessage(msg){
   if(!msg||typeof msg!=='object')return;
   if(msg.type==='reject'){setLobbyError(msg.reason||'Unable to join this room.');$('roomStatus').textContent='JOIN REQUEST REJECTED';}
   if(msg.type==='welcome'){
     if(msg.protocol!==NETWORK_PROTOCOL){setLobbyError('Host is using an older game version. Ask everyone to refresh, then create a new room.');return;}
-    clearTimeout(raceState._joinTimeout);raceState.joined=true;raceSettings.laps=clamp(Number(msg.laps)||3,2,12);
+    clearTimeout(raceState._joinTimeout);clearInterval(raceState._iceWatchTimer);setLobbyError('');raceState.joined=true;setNetworkHelp(networkHelpText(true));raceSettings.laps=clamp(Number(msg.laps)||3,2,12);
     $('roomStatus').textContent=`CONNECTED · ${raceSettings.laps} LAP RACE · WAITING FOR HOST`;
     updateNetworkStatus('JOINED / '+raceState.roomCode);applyRoster(msg.players||[]);
   }

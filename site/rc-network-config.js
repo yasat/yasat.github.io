@@ -4,7 +4,6 @@
    NEVER paste an account Secret Key or admin API token into public GitHub Pages.
    See RC_GLOBAL_MULTIPLAYER.md for steps. */
 window.RC_MULTIPLAYER_CONFIG = {
-  // Metered example (credential API key only; NOT the workspace secret key):
-  // https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=YOUR_CREDENTIAL_API_KEY
-  turnCredentialUrl: ''
+  turnCredentialUrl:
+    'https://yasat.metered.live/api/v1/turn/credentials?apiKey=c48452804a3622e7182ee3f434211989478a'
 };

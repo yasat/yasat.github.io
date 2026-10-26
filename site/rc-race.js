@@ -1,6 +1,6 @@
 /* RC Grand Prix — standalone Three.js / PeerJS game, deployable on GitHub Pages. */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=8';
+import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=9';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -67,7 +67,7 @@ const PIT_SPAN = .067; // every lane runs for several hundred track metres
 const PIT_BOARD_WIDTH = 36, PIT_BOARD_HEIGHT = 22;
 const player = {x:0,z:0,heading:0,speed:0,fuel:1,boost:1,lap:0,travel:0,priorU:INITIAL_POS,u:INITIAL_POS,
   elapsed:0,lapAt:0,lastLap:0,fastest:Infinity,offRoad:false,inPit:false,pitVisit:null,boosting:false,
-  mesh:null,colour:CAR_COLOURS[0],braking:false,finished:false,steer:0,rank:0};
+  mesh:null,colour:CAR_COLOURS[0],braking:false,finished:false,steer:0,steerAngle:0,rank:0};
 const opponents = new Map();
 const NETWORK_PROTOCOL = 8;
 const raceState = { role:'solo', peer:null,hostConn:null,connections:new Map(),remote:new Map(),roomCode:'',name:'Driver',hostId:'',joined:false,started:false,startTime:0,finishers:new Map(),pendingStart:null,round:0,roster:[],ready:new Set() };
@@ -155,6 +155,11 @@ function trackPosition(u,offset=0) {
   return center.add(new THREE.Vector3(tangent.z,0,-tangent.x).multiplyScalar(offset));
 }
 function getHeading(tan) { return Math.atan2(tan.x,-tan.z); }
+// Labels are viewed by drivers approaching from *upstream*, looking along the road.
+function facingOncoming(tan) { return Math.atan2(-tan.x,-tan.z); }
+// Local X on a grandstand follows the track tangent; local -Z looks at the track.
+function standYaw(tan,outwardSide) { return Math.atan2(-tan.z,tan.x)+(outwardSide>0?Math.PI:0); }
+function signedAngle(a,b) { return Math.atan2(Math.sin(a-b),Math.cos(a-b)); }
 function getTrackClosest(x,z) {
   let best=Infinity, posU=0, side=0, closestX=0, closestZ=0;
   const p=trackPoints;
@@ -238,8 +243,13 @@ function addCylinder(radiusTop,radiusBottom,height,color,x,y,z,group=worldObject
 }
 function addWorldLabel(text,pos,w=32,h=6,bg='#153d38',fg='#e6f5ac',angle=0,group=worldObjects){
   const t=makeLabelTexture([text],fg,bg);
-  const material=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide});
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);m.position.copy(pos);m.rotation.y=angle;group.add(m);return m;
+  // Two correctly oriented front faces. Rendering a texture on a DoubleSide
+  // plane produces mirror writing on its back side (old grandstand bug).
+  const material=new THREE.MeshBasicMaterial({map:t,side:THREE.FrontSide});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);m.position.copy(pos);m.rotation.y=angle;group.add(m);
+  const back=new THREE.Mesh(m.geometry,material);back.position.copy(pos);back.rotation.y=angle+Math.PI;
+  back.position.x-=Math.sin(angle)*.06;back.position.z-=Math.cos(angle)*.06;group.add(back);
+  return m;
 }
 function buildGrassTexture(){
   const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');
@@ -249,8 +259,8 @@ function buildGrassTexture(){
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(25,25);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
 function addTrack(){
-  const g=new THREE.Mesh(new THREE.PlaneGeometry(3400,2500),new THREE.MeshStandardMaterial({map:buildGrassTexture(),color:0xffffff,roughness:1}));g.rotation.x=-Math.PI/2;g.position.y=-.45;g.receiveShadow=true;worldObjects.add(g);
-  const drain=new THREE.Mesh(new THREE.PlaneGeometry(3400,2500),new THREE.MeshStandardMaterial({color:0x456454,transparent:true,opacity:.08}));drain.rotation.x=-Math.PI/2;drain.position.y=-.42;worldObjects.add(drain);
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(4500,3600),new THREE.MeshStandardMaterial({map:buildGrassTexture(),color:0xffffff,roughness:1}));g.rotation.x=-Math.PI/2;g.position.y=-.45;g.receiveShadow=true;worldObjects.add(g);
+  const drain=new THREE.Mesh(new THREE.PlaneGeometry(4500,3600),new THREE.MeshStandardMaterial({color:0x456454,transparent:true,opacity:.08}));drain.rotation.x=-Math.PI/2;drain.position.y=-.42;worldObjects.add(drain);
   addRibbon(trackPoints,-41,41,-.18,0x687e75);
   addRibbon(trackPoints,-34,-29,-.07,0x90a49a);
   addRibbon(trackPoints,29,34,-.07,0x90a49a);
@@ -280,7 +290,7 @@ function addTrack(){
   }
   const gateP=trackCurve.getPointAt(0),gateT=trackCurve.getTangentAt(0),gateNormal=new THREE.Vector3(gateT.z,0,-gateT.x);
   for(const s of [-1,1]){const p=gateP.clone().addScaledVector(gateNormal,s*27);addCylinder(1.3,1.7,24,0x163c39,p.x,12,p.z);}
-  const gantryText=addWorldLabel('GHANTA  /  RC  GRAND PRIX',gateP.clone().setY(23),52,8,'#16352e','#e0f2a2',getHeading(gateT));
+  const gantryText=addWorldLabel('GHANTA  /  RC  GRAND PRIX',gateP.clone().setY(23),52,8,'#16352e','#e0f2a2',facingOncoming(gateT));
   gantryText.userData.billboard=false;
 }
 function placeArcadeBoostPads(){
@@ -311,7 +321,7 @@ function createServiceLane(pit){
   // Pair of clear directional markers at the true drive-through entrance.
   const entrance=pit.curve.getPointAt(.10),entranceTan=pit.curve.getTangentAt(.10);
   const name=raceMode==='tour'?`PIT ${String(pit.index+1).padStart(2,'0')} · ${pit.info.name.toUpperCase()}`:'FUEL · DRIVE THROUGH';
-  addWorldLabel(name,entrance.clone().setY(11),37,5.5,'#133a36','#e4f5a3',getHeading(entranceTan));
+  addWorldLabel(name,entrance.clone().setY(11),37,5.5,'#133a36','#e4f5a3',facingOncoming(entranceTan));
   for(const side of [-1,1]){
     const normal=new THREE.Vector3(entranceTan.z,0,-entranceTan.x);
     const p=entrance.clone().addScaledVector(normal,side*16);
@@ -323,15 +333,15 @@ function createServiceLane(pit){
   const approachNormal=new THREE.Vector3(approachTan.z,0,-approachTan.x);
   const approachSide=approachNormal.dot(pit.n)>=0?1:-1;
   const approachPos=approach.clone().addScaledVector(approachNormal,approachSide*12);
-  addWorldLabel(`PIT ${String(pit.index+1).padStart(2,'0')}   ➜`,approachPos.setY(1.5),28,5,'#4e9a67','#f5ffd1',getHeading(approachTan));
+  addWorldLabel(`PIT ${String(pit.index+1).padStart(2,'0')}   ➜`,approachPos.setY(1.5),28,5,'#4e9a67','#f5ffd1',facingOncoming(approachTan));
   const centre=pit.curve.getPointAt(.5),tangent=pit.curve.getTangentAt(.5),normal=new THREE.Vector3(tangent.z,0,-tangent.x);
   const out=normal.dot(pit.n)>=0?1:-1;
   const ap=centre.clone().addScaledVector(normal,out*138).setY(0);
   const garage=solidBox(29,9,18,raceMode==='tour'?0x284e48:0x335b60,ap.x,5.5,ap.z);garage.rotation.y=getHeading(tangent);
   const roof=solidBox(32,1.3,21,0xd7e7d4,ap.x,10.8,ap.z);roof.rotation.y=garage.rotation.y;
-  addWorldLabel(raceMode==='tour'?`SG · PIT ${String(pit.index+1).padStart(2,'0')}`:'FUEL & TYRES',ap.clone().setY(8),24,4,'#123733','#e4f3ad',getHeading(tangent));
+  addWorldLabel(raceMode==='tour'?`SG · PIT ${String(pit.index+1).padStart(2,'0')}`:'FUEL & TYRES',ap.clone().setY(8),24,4,'#123733','#e4f3ad',facingOncoming(tangent));
   if(raceMode==='tour')createStationBillboards(pit);
-  const refuel=addWorldLabel('FULL TANK  /  DRIVE THROUGH',centre.clone().setY(3.5),23,3,'#e7f6b7','#16423b',getHeading(tangent));refuel.userData.pitLabel=true;
+  const refuel=addWorldLabel('FULL TANK  /  DRIVE THROUGH',centre.clone().setY(3.5),23,3,'#e7f6b7','#16423b',facingOncoming(tangent));refuel.userData.pitLabel=true;
 }
 function createStationBillboards(pit){
   const items=pit.info.items;
@@ -367,7 +377,9 @@ function createStationBillboards(pit){
     for(const x of [-w*.43,w*.43])solidBox(.55,6,1.2,0x23433a,x,3,0,group);
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:0xfffdf2,side:THREE.FrontSide}));
     mesh.position.set(0,h/2+3,.73);group.add(mesh);
-    pit.boards.push({item,mesh,worldPos:new THREE.Vector3(pos.x,h/2+3,pos.z),towards,
+    const backMesh=new THREE.Mesh(mesh.geometry,new THREE.MeshBasicMaterial({color:0xfffdf2,side:THREE.FrontSide}));
+    backMesh.position.set(0,h/2+3,-.73);backMesh.rotation.y=Math.PI;group.add(backMesh);
+    pit.boards.push({item,mesh,backMesh,worldPos:new THREE.Vector3(pos.x,h/2+3,pos.z),towards,
       section:pit.info,texture:null,station:pit,group,width:w,height:h});
   });
 }
@@ -440,8 +452,8 @@ function refreshVisiblePosters(force=false){
   for(const pit of stationData){
     const here=pit.curve.getPointAt(.5);const dist=Math.hypot(player.x-here.x,player.z-here.z);
     const load=dist<230;
-    if(load&&!pit.loaded){for(const board of pit.boards){const t=makePoster(board);board.texture=t;board.mesh.material.map=t;board.mesh.material.color.set(0xffffff);board.mesh.material.needsUpdate=true;}pit.loaded=true;}
-    if(!load&&pit.loaded&&dist>340&&!force){for(const board of pit.boards){board.mesh.material.map=null;board.mesh.material.color.set(0xf1f3e7);board.mesh.material.needsUpdate=true;board.texture?.dispose();board.texture=null;}pit.loaded=false;}
+    if(load&&!pit.loaded){for(const board of pit.boards){const t=makePoster(board);board.texture=t;for(const face of [board.mesh,board.backMesh]){face.material.map=t;face.material.color.set(0xffffff);face.material.needsUpdate=true;}}pit.loaded=true;}
+    if(!load&&pit.loaded&&dist>340&&!force){for(const board of pit.boards){for(const face of [board.mesh,board.backMesh]){face.material.map=null;face.material.color.set(0xf1f3e7);face.material.needsUpdate=true;}board.texture?.dispose();board.texture=null;}pit.loaded=false;}
   }
 }
 function seededRandom(seed=142857){let k=seed>>>0;return()=>{k=(Math.imul(k,1664525)+1013904223)>>>0;return k/4294967296;};}
@@ -480,6 +492,19 @@ function addGuardRails(){
   }
 }
 
+// Validate the ENTIRE stand footprint, not just its centre, against all roads.
+// The main road and each outward-curving pit can run behind a bend, so a fixed
+// 92-unit stand offset would regularly put seats directly over pit tarmac.
+function clearGrandstandFootprint(center,yaw){
+  const cosine=Math.cos(yaw),sine=Math.sin(yaw);
+  for(let ix=-96;ix<=96;ix+=24)for(let iz=-62;iz<=70;iz+=22){
+    const x=center.x+ix*cosine+iz*sine;
+    const z=center.z-ix*sine+iz*cosine;
+    if(getTrackClosest(x,z).dist<ROAD_HALF+22)return false;
+    for(const pit of stationData)if(getPitClosest(x,z,pit).dist<PIT_HALF+24)return false;
+  }
+  return true;
+}
 function addStadiumArchitecture(){
   const rand=seededRandom(84120);
   const steel=new THREE.MeshStandardMaterial({color:0x365359,metalness:.58,roughness:.4});
@@ -488,9 +513,9 @@ function addStadiumArchitecture(){
   const glass=new THREE.MeshStandardMaterial({color:0x96c9c7,metalness:.4,roughness:.21});
   const seatColors=[0x7ce0bc,0xdaf493,0xeec99b,0xb6d0dc,0x9eafc1];
   // Massive circular stadium apron surrounding the racetrack, but outside the road.
-  const outer=new THREE.Mesh(new THREE.RingGeometry(960,1050,128),new THREE.MeshStandardMaterial({color:0x34494c,roughness:1,side:THREE.DoubleSide}));
+  const outer=new THREE.Mesh(new THREE.RingGeometry(1470,1575,128),new THREE.MeshStandardMaterial({color:0x34494c,roughness:1,side:THREE.DoubleSide}));
   outer.rotation.x=-Math.PI/2;outer.scale.y=.77;outer.position.y=-.27;worldObjects.add(outer);
-  const oval=new THREE.EllipseCurve(0,0,1040,800,0,TWO_PI,false,0);
+  const oval=new THREE.EllipseCurve(0,0,1520,1170,0,TWO_PI,false,0);
   for(let i=0;i<96;i++){
     const t=i/96,angle=t*TWO_PI,p=oval.getPoint(t),p2=oval.getPoint((i+1)/96),dx=p2.x-p.x,dz=p2.y-p.y;
     const panel=solidBox(1.8,21,Math.hypot(dx,dz)+1.7,0x28464c,(p.x+p2.x)/2,10.5,(p.y+p2.y)/2);panel.rotation.y=Math.atan2(dx,dz);
@@ -502,8 +527,14 @@ function addStadiumArchitecture(){
   for(const u of [.035,.13,.215,.305,.405,.51,.605,.70,.805,.91]){
     const base=trackCurve.getPointAt(u),tangent=trackCurve.getTangentAt(u),n=new THREE.Vector3(tangent.z,0,-tangent.x);
     const side=base.x*n.x+base.z*n.z>=0?1:-1;n.multiplyScalar(side);
-    const p=base.clone().addScaledVector(n,92);
-    const group=new THREE.Group();group.position.set(p.x,0,p.z);group.rotation.y=getHeading(tangent);worldObjects.add(group);
+    const yaw=standYaw(tangent,side);
+    let p=null;
+    for(const offset of [195,235,280,325,370,415,460]){
+      const candidate=base.clone().addScaledVector(n,offset);
+      if(clearGrandstandFootprint(candidate,yaw)){p=candidate;break;}
+    }
+    if(!p){console.warn('No safe grandstand position near track segment',u);continue;}
+    const group=new THREE.Group();group.position.set(p.x,0,p.z);group.rotation.y=yaw;worldObjects.add(group);
     solidBox(180,6,78,0x45595a,0,3,0,group);
     solidBox(175,17,6,0x2a4145,0,8,40,group);
     const count=13*31;
@@ -535,7 +566,7 @@ function addStadiumArchitecture(){
       const beam=solidBox(1.7,1.8,94,0x334d55,x,37,0,group,steel);beam.rotation.x=-.05;
       solidBox(1.5,15,1.5,0xb9c7c3,x,17,-38,group);
     }
-    addWorldLabel('GHANTA CIRCUIT · GRANDSTAND',group.localToWorld(new THREE.Vector3(0,43,-49)),89,7,'#213e43','#dbf394',group.rotation.y);
+    addWorldLabel('GHANTA CIRCUIT · GRANDSTAND',group.localToWorld(new THREE.Vector3(0,43,-49)),89,7,'#213e43','#dbf394',Math.atan2(-n.x,-n.z));
     stadiumDecor.grandstands.push({x:p.x,z:p.z,u,side,heading:group.rotation.y,width:180});
   }
   // Infield race-control tower and centre paddock. Surrounding bleachers
@@ -571,11 +602,10 @@ function constrainToCircuit(){
   player.x=edge.x+(player.x-edge.x)*k;player.z=edge.z+(player.z-edge.z)*k;
   player.speed*=.70;
   // Reduce lateral rotation after an impact, preserving user steering control.
-  player.steer*=.42;
   const tangent=onPitEdge?pit.pit.curve.getTangentAt(pit.u):trackCurve.getTangentAt(track.u);
-  const suggested=getHeading(tangent);
-  const delta=Math.atan2(Math.sin(suggested-player.heading),Math.cos(suggested-player.heading));
-  if(Math.abs(delta)<1.5)player.heading+=delta*.09;
+  const delta=signedAngle(getHeading(tangent),player.heading);
+  // No sudden chassis rotation or steering lock on rail contact.
+  if(Math.abs(delta)<.75)player.heading+=clamp(delta*.006,-.003,.003);
 }
 
 function addTreesAndLandscape(){
@@ -705,12 +735,16 @@ function makeCar(colour=CAR_COLOURS[0],label=''){
   b(2,.65,.45,-2.2,4.2,-7.2,light);b(2,.65,.45,2.2,4.2,-7.2,light);
   b(2,.65,.45,-2.2,4.2,7.2,red);b(2,.65,.45,2.2,4.2,7.2,red);
   b(5.9,.2,1,0,4.88,-4.1,pale);
+  const frontWheels=[];
   for(const x of [-4.3,4.3])for(const z of [-4.8,4.8]){
+    const pivot=new THREE.Group();pivot.position.set(x,2.3,z);grp.add(pivot);
     const wheel=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,2,12),black);
-    wheel.rotation.z=Math.PI/2;wheel.position.set(x,2.3,z);wheel.castShadow=true;grp.add(wheel);
+    wheel.rotation.z=Math.PI/2;wheel.castShadow=true;pivot.add(wheel);
     const rim=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,2.08,10),new THREE.MeshStandardMaterial({color:0xc4ced0,metalness:.7,roughness:.35}));
-    rim.rotation.z=Math.PI/2;rim.position.copy(wheel.position);grp.add(rim);
+    rim.rotation.z=Math.PI/2;pivot.add(rim);
+    if(z<0)frontWheels.push(pivot);
   }
+  grp.userData.frontWheels=frontWheels;
   const antenna=b(.18,11,.18,2.2,11.6,4.8,dark);
   const antennaBall=new THREE.Mesh(new THREE.SphereGeometry(.7,8,8),red);antennaBall.position.set(2.2,17,4.8);grp.add(antennaBall);
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(9,20),new THREE.MeshBasicMaterial({color:0x081b1b,transparent:true,opacity:.24,depthWrite:false}));
@@ -723,7 +757,14 @@ function makeCar(colour=CAR_COLOURS[0],label=''){
   }
   return grp;
 }
-function setCarPose(car,x,z,heading){car.position.set(x,0,z);car.rotation.y=heading;}
+function setCarPose(car,x,z,heading,steering=0){
+  if(!car)return;
+  car.position.set(x,0,z);
+  // Physics uses +heading clockwise from world -Z; Three.js rotates +Y the
+  // other way. This sign mismatch made the bonnet point opposite the velocity.
+  car.rotation.y=-heading;
+  for(const frontWheel of (car.userData.frontWheels||[]))frontWheel.rotation.y=-steering;
+}
 function newScene(){
   if(!renderer){
     renderer=new THREE.WebGLRenderer({canvas:viewport,antialias:true,alpha:false,powerPreference:'high-performance'});
@@ -738,6 +779,7 @@ function newScene(){
   sun=new THREE.DirectionalLight(0xfff1d5,2.35);sun.position.set(-220,450,170);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
   sun.shadow.camera.left=-650;sun.shadow.camera.right=650;sun.shadow.camera.top=620;sun.shadow.camera.bottom=-620;sun.shadow.camera.far=1300;sun.shadow.bias=-.00022;scene.add(sun);
   const ambientFill=new THREE.DirectionalLight(0xb8e4d8,.35);ambientFill.position.set(300,130,-300);scene.add(ambientFill);
+  stadiumDecor.grandstands.length=0;
   worldObjects=new THREE.Group();scene.add(worldObjects);
   addTrack();
   stationData.forEach(createServiceLane);
@@ -751,6 +793,7 @@ function newScene(){
   if(!compatibilityRenderer)compatibilityRenderer=new CompatibilityTrackRenderer($('compatCanvas'),trackPoints,trackTangents);
   compatibilityRenderer.setPits(stationData);
   compatibilityRenderer.setTrees(sceneryTrees);
+  compatibilityRenderer.setGrandstands(stadiumDecor.grandstands);
   rendererCheckCount=0;rendererBlankCount=0;lastRendererCheck=0;
   sceneReady=true;
   if(compatibilityForced)setCompatibility(true,'Requested by URL');
@@ -770,19 +813,19 @@ function resetPlayer(u=INITIAL_POS,full=true){
   const pos=trackCurve.getPointAt(u),t=trackCurve.getTangentAt(u);
   player.x=pos.x;player.z=pos.z;player.heading=getHeading(t);player.speed=0;
   player.u=u;player.priorU=u;player.travel=0;player.lap=0;player.lapAt=0;player.elapsed=0;player.lastLap=0;player.fastest=Infinity;
-  player.pitVisit=null;player.inPit=false;player.offRoad=false;player.finished=false;player.boost=1;player.steer=0;clearKeys();player._fuelWarn=false;player._emptyWarn=false;
+  player.pitVisit=null;player.inPit=false;player.offRoad=false;player.finished=false;player.boost=1;player.steer=0;player.steerAngle=0;clearKeys();player._fuelWarn=false;player._emptyWarn=false;
   if(full)player.fuel=1;
   inspector=null;cameraMode=0;$('cameraName').textContent='CHASE';
-  localFinishTime=null;setCarPose(player.mesh,player.x,player.z,player.heading);
+  localFinishTime=null;setCarPose(player.mesh,player.x,player.z,player.heading,player.steerAngle||0);
   camera.position.set(player.x+40,46,player.z+85);
   vectors.currentTarget.set(player.x,4,player.z);
   updateDashboard();
 }
 function placeCarOnLane(pit,q=.08){
   const p=pit.curve.getPointAt(q),t=pit.curve.getTangentAt(q);
-  player.x=p.x;player.z=p.z;player.heading=getHeading(t);player.speed=0;player.steer=0;player.pitVisit=null;player.inPit=true;
+  player.x=p.x;player.z=p.z;player.heading=getHeading(t);player.speed=0;player.steer=0;player.steerAngle=0;player.pitVisit=null;player.inPit=true;
   player.priorU=(pit.startT+pit.span*q+1)%1;player.u=player.priorU;
-  inspector=null;setCarPose(player.mesh,player.x,player.z,player.heading);
+  inspector=null;setCarPose(player.mesh,player.x,player.z,player.heading,player.steerAngle||0);
 }
 function setMode(mode){
   if(raceMode===mode&&gameRunning){
@@ -832,28 +875,31 @@ function updatePhysics(dt){
   if(player.speed>speedLimit)player.speed=THREE.MathUtils.damp(player.speed,speedLimit,3.5,dt);
   player.speed=clamp(player.speed,-19,boosting?95:maxSpeed);
   player.boost=boosting?Math.max(0,player.boost-dt*.24):Math.min(1,player.boost+dt*(pitLane?.2:.05));
-  // Smoothed, speed-sensitive RC steering: no frame-by-frame instant rotation.
-  // On track, a light steering assist prevents an uncommanded straight-on departure
-  // through each curve, without preventing the player from leaving the road.
+  // Front-axle bicycle model (no lateral drift): turn radius follows
+  // steering-wheel angle and forward speed, not frame-rate-dependent spin.
   const input=(keys.right?1:0)-(keys.left?1:0);
-  player.steer=THREE.MathUtils.damp(player.steer,input,7.5,dt);
+  player.steer=THREE.MathUtils.damp(player.steer,input,5.6,dt);
   const speedMagnitude=Math.abs(player.speed);
-  if(speedMagnitude>0.8){
-    const steerStrength=1.30/(1+speedMagnitude/55);
-    const yaw=player.steer*steerStrength*clamp(speedMagnitude/19,0,1)*Math.sign(player.speed);
-    player.heading+=yaw*dt;
-    if(Math.abs(input)<.01&&Math.abs(player.steer)<.25&&!player.offRoad&&speedMagnitude>12){
-      const lane=pitLane?pit.pit?.curve:null;
-      const tangent=lane?lane.getTangentAt(pit.u):trackCurve.getTangentAt(track.u);
-      if(tangent){
-        const suggested=getHeading(tangent);
-        const error=Math.atan2(Math.sin(suggested-player.heading),Math.cos(suggested-player.heading));
-        if(Math.abs(error)<.85)player.heading+=error*dt*.65;
-      }
+  // Lower steering lock at high speeds; a parked car cannot pirouette.
+  const maxWheelAngle=THREE.MathUtils.lerp(.47,.26,clamp(speedMagnitude/80,0,1));
+  player.steerAngle=player.steer*maxWheelAngle;
+  const virtualWheelbase=27+speedMagnitude*.29;
+  const yawRate=(player.speed/virtualWheelbase)*Math.tan(player.steerAngle);
+  const headingStep=clamp(yawRate*dt,-.022,.022);
+  const midHeading=player.heading+headingStep*.5;
+  const step=player.speed*dt;
+  player.x+=Math.sin(midHeading)*step;
+  player.z-=Math.cos(midHeading)*step;
+  player.heading+=headingStep;
+  // Assistance acts only with released steering, at a low capped angular speed.
+  if(Math.abs(input)<.01&&!player.offRoad&&speedMagnitude>14){
+    const lane=pitLane?pit.pit?.curve:trackCurve;
+    const pathU=pitLane?pit.u:track.u;
+    if(lane){
+      const error=signedAngle(getHeading(lane.getTangentAt(pathU)),player.heading);
+      if(Math.abs(error)<.42)player.heading+=clamp(error*.33*dt,-.13*dt,.13*dt);
     }
   }
-  const step=player.speed*dt;
-  player.x+=Math.sin(player.heading)*step;player.z-=Math.cos(player.heading)*step;
   constrainToCircuit();
   if(Math.abs(player.x)>1750||Math.abs(player.z)>1350){player.x=clamp(player.x,-1745,1745);player.z=clamp(player.z,-1345,1345);player.speed*=.1;}
   if(player.speed>0&&player.fuel>0)player.fuel=Math.max(0,player.fuel-step/(2*trackLength));
@@ -868,7 +914,7 @@ function updatePhysics(dt){
   }
   if(!player._fuelWarn&&player.fuel<=.22&&player.fuel>0){player._fuelWarn=true;announce('LOW FUEL\nFIND A PIT LANE',2.3);}
   if(player.fuel===0&&!player._emptyWarn){player._emptyWarn=true;announce('OUT OF FUEL\nPRESS T FOR PIT TOW',3.2);}
-  setCarPose(player.mesh,player.x,player.z,player.heading);
+  setCarPose(player.mesh,player.x,player.z,player.heading,player.steerAngle||0);
 }
 function updatePitProgress(pit,track){
   const p=pit.pit;
@@ -968,7 +1014,7 @@ function toggleInspect(){
   if(inspector){inspector=null;clearKeys();return;}
   if(latestClosestBoard&&raceMode==='tour'){
     inspector={board:latestClosestBoard,distance:30,pan:0};clearKeys();
-    if(!latestClosestBoard.texture){const pit=latestClosestBoard.station;for(const board of pit.boards){if(!board.texture){board.texture=makePoster(board);board.mesh.material.map=board.texture;board.mesh.material.needsUpdate=true;}}pit.loaded=true;}
+    if(!latestClosestBoard.texture){const pit=latestClosestBoard.station;for(const board of pit.boards){if(!board.texture){board.texture=makePoster(board);for(const face of [board.mesh,board.backMesh]){face.material.map=board.texture;face.material.needsUpdate=true;}}}pit.loaded=true;}
   }
 }
 function pitTow(){
@@ -1313,7 +1359,7 @@ function beginArcadeRace(options={}){
     const start=gridPosition(i);
     if(p.id===myId){
       player.x=start.x;player.z=start.z;player.heading=start.heading;player.u=start.u;player.priorU=start.u;
-      setCarPose(player.mesh,player.x,player.z,player.heading);
+      setCarPose(player.mesh,player.x,player.z,player.heading,player.steerAngle||0);
     }else{
       const op=ensureOpponent(p.id,p.name,i);
       if(op){op.x=start.x;op.z=start.z;op.heading=start.heading;op.speed=0;op.lap=0;op.finished=false;

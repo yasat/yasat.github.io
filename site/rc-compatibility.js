@@ -13,10 +13,11 @@ export class CompatibilityTrackRenderer {
   constructor(canvas,trackPoints,trackTangents){
     this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});
     this.track=trackPoints;this.tangents=trackTangents;
-    this.trees=[];this.frame=0;this.segments=[];this.width=0;this.height=0;this.lastCamera=null;
+    this.trees=[];this.grandstands=[];this.frame=0;this.segments=[];this.width=0;this.height=0;this.lastCamera=null;
     this.setPits([]);this.makeTrackSegments();
   }
   setTrees(trees){this.trees=trees||[];}
+  setGrandstands(stands){this.grandstands=stands||[];}
   setPits(pits){
     this.pits=pits||[];
     this.pitSegments=[];
@@ -171,7 +172,7 @@ export class CompatibilityTrackRenderer {
     const max=96,panels=[];
     for(let i=0;i<max;i++){
       const a=i/max*PI2,b=(i+1)/max*PI2,m=(a+b)*.5;
-      const x=1040*Math.cos(a),z=800*Math.sin(a),xx=1040*Math.cos(b),zz=800*Math.sin(b);
+      const x=1520*Math.cos(a),z=1170*Math.sin(a),xx=1520*Math.cos(b),zz=1170*Math.sin(b);
       const dist=Math.hypot(x-this.cameraX,z-this.cameraZ);
       if(dist>1900)continue;
       panels.push({x,z,xx,zz,m,dist});
@@ -188,12 +189,12 @@ export class CompatibilityTrackRenderer {
   }
   drawGrandstands(){
     const stands=[];
-    for(const u of STAND_POINTS){
-      const i=Math.round(u*(this.track.length-1)),p=this.track[i],t=this.tangents[i];
-      const n={x:t.z,z:-t.x},side=p.x*n.x+p.z*n.z>=0?1:-1;
-      const x=p.x+side*n.x*92,z=p.z+side*n.z*92;
+    for(const stand of this.grandstands){
+      const {x,z,side,u}=stand;
+      const i=Math.round(u*(this.track.length-1)),t=this.tangents[i];
+      const n={x:t.z,z:-t.x};
       const d=Math.hypot(x-this.cameraX,z-this.cameraZ);
-      if(d<780)stands.push({x,z,t,n,side,d});
+      if(d<900)stands.push({x,z,t,n,side,d});
     }
     stands.sort((a,b)=>b.d-a.d);
     for(const {x,z,t,n,side,d} of stands){
@@ -343,16 +344,23 @@ export class CompatibilityTrackRenderer {
     ctx.restore();
   }
   transformCar(x,y,z,heading,dx,dy,dz){
-    return [x+dx*Math.cos(heading)+dz*Math.sin(heading),y+dy,z-dx*Math.sin(heading)+dz*Math.cos(heading)];
+    return [x+dx*Math.cos(heading)-dz*Math.sin(heading),y+dy,z+dx*Math.sin(heading)+dz*Math.cos(heading)];
   }
-  drawCar(x,z,heading,colour='#d7f36b',ghost=false){
+  drawCar(x,z,heading,colour='#d7f36b',ghost=false,steering=0){
     const t=(dx,dy,dz)=>this.transformCar(x,0,z,heading,dx*.54,dy*.54,dz*.54);
     if(ghost)this.ctx.globalAlpha=.87;
     const shadow=[t(-4.8,.35,-8),t(4.8,.35,-8),t(4.8,.35,8),t(-4.8,.35,8)];
     this.poly(shadow,'rgba(3,25,24,.3)');
     for(const side of [-1,1])for(const zPos of [-5,5]){
-      this.poly([t(side*3,1,zPos-2.5),t(side*5.8,1,zPos-2.5),t(side*5.8,4.7,zPos+2.5),t(side*3,4.7,zPos+2.5)],'#111e24');
-      this.poly([t(side*5.8,2,zPos-1.5),t(side*5.8,2,zPos+1.5),t(side*5.8,3.5,zPos+1.5),t(side*5.8,3.5,zPos-1.5)],'#b6c8c0');
+      // The front wheel rectangles swivel around their kingpin.
+      const wheelSteer=zPos<0?-steering:0;
+      const wp=(dx,dy,dz)=>{
+        const off=dx-side*4.5,along=dz-zPos;
+        const cs=Math.cos(wheelSteer),sn=Math.sin(wheelSteer);
+        return t(side*4.5+off*cs+along*sn,dy,zPos+along*cs-off*sn);
+      };
+      this.poly([wp(side*3,1,zPos-2.5),wp(side*5.8,1,zPos-2.5),wp(side*5.8,4.7,zPos+2.5),wp(side*3,4.7,zPos+2.5)],'#111e24');
+      this.poly([wp(side*5.8,2,zPos-1.5),wp(side*5.8,2,zPos+1.5),wp(side*5.8,3.5,zPos+1.5),wp(side*5.8,3.5,zPos-1.5)],'#b6c8c0');
     }
     this.poly([t(-4.5,2.5,-7.6),t(4.5,2.5,-7.6),t(4.5,4.5,7.1),t(-4.5,4.5,7.1)],'#16262c');
     this.poly([t(-3.85,4.6,-6),t(3.85,4.6,-6),t(3.85,5.4,5.6),t(-3.85,5.4,5.6)],colour);
@@ -409,7 +417,7 @@ export class CompatibilityTrackRenderer {
     this.drawStations(player,inspector);
     this.drawGantry();
     for(const o of opponents.values())this.drawCar(o.x,o.z,o.heading,o.hex||'#ffb37d',true);
-    if(!inspector)this.drawCar(player.x,player.z,player.heading,'#d7f36b');
+    if(!inspector)this.drawCar(player.x,player.z,player.heading,'#d7f36b',false,player.steerAngle||0);
     if(mode==='arcade'){
       const ctx=this.ctx;ctx.save();ctx.fillStyle='rgba(10,26,27,.78)';ctx.fillRect(this.width/2-85,6,170,23);
       ctx.textAlign='center';ctx.font='900 11px Arial';ctx.fillStyle='#dff1a1';ctx.fillText('ARCADE  /  RACE VIEW',this.width/2,22);ctx.restore();

@@ -1,6 +1,6 @@
 /* RC Grand Prix — standalone Three.js / PeerJS game, deployable on GitHub Pages. */
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=5';
+import { CompatibilityTrackRenderer } from './rc-compatibility.js?v=8';
 
 const $ = (id) => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -20,6 +20,7 @@ let lastRendererCheck = 0;
 let lastCompatibilityFrame = 0;
 let sceneryTrees = [];
 const compatibilityForced = new URLSearchParams(location.search).get('renderer') === 'compat';
+const stadiumDecor = { barriers: [], grandstands: [], trees: [] };
 let worldVersion = 0;
 let stationData = [];
 let raceMode = 'tour';
@@ -68,6 +69,7 @@ const player = {x:0,z:0,heading:0,speed:0,fuel:1,boost:1,lap:0,travel:0,priorU:I
   elapsed:0,lapAt:0,lastLap:0,fastest:Infinity,offRoad:false,inPit:false,pitVisit:null,boosting:false,
   mesh:null,colour:CAR_COLOURS[0],braking:false,finished:false,steer:0,rank:0};
 const opponents = new Map();
+const NETWORK_PROTOCOL = 8;
 const raceState = { role:'solo', peer:null,hostConn:null,connections:new Map(),remote:new Map(),roomCode:'',name:'Driver',hostId:'',joined:false,started:false,startTime:0,finishers:new Map(),pendingStart:null,round:0,roster:[],ready:new Set() };
 
 async function loadResume() {
@@ -154,26 +156,26 @@ function trackPosition(u,offset=0) {
 }
 function getHeading(tan) { return Math.atan2(tan.x,-tan.z); }
 function getTrackClosest(x,z) {
-  let best=Infinity, posU=0, side=0;
+  let best=Infinity, posU=0, side=0, closestX=0, closestZ=0;
   const p=trackPoints;
   for (let i=0;i<TRACK_SAMPLES;i++) {
     const a=p[i], b=p[i+1], dx=b.x-a.x, dz=b.z-a.z, len2=dx*dx+dz*dz;
     const r=clamp(((x-a.x)*dx+(z-a.z)*dz)/len2,0,1),qx=a.x+dx*r,qz=a.z+dz*r;
     const d=(x-qx)**2+(z-qz)**2;
-    if(d<best){best=d;posU=(i+r)/TRACK_SAMPLES;side=(x-qx)*dz-(z-qz)*dx;}
+    if(d<best){best=d;posU=(i+r)/TRACK_SAMPLES;side=(x-qx)*dz-(z-qz)*dx;closestX=qx;closestZ=qz;}
   }
-  return {dist:Math.sqrt(best),u:posU,side:Math.sign(side)};
+  return {dist:Math.sqrt(best),u:posU,side:Math.sign(side),x:closestX,z:closestZ};
 }
 function getPitClosest(x,z,pit){
   const pts=pit.points;
-  let best=Infinity,posU=0;
+  let best=Infinity,posU=0,closestX=0,closestZ=0;
   for(let i=0;i<pts.length-1;i++){
     const a=pts[i],b=pts[i+1],dx=b.x-a.x,dz=b.z-a.z;
     const v=clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz),0,1);
     const d=(x-a.x-dx*v)**2+(z-a.z-dz*v)**2;
-    if(d<best){best=d;posU=(i+v)/(pts.length-1);}
+    if(d<best){best=d;posU=(i+v)/(pts.length-1);closestX=a.x+dx*v;closestZ=a.z+dz*v;}
   }
-  return {dist:Math.sqrt(best),u:posU,pit};
+  return {dist:Math.sqrt(best),u:posU,pit,x:closestX,z:closestZ};
 }
 function nearestPit(x,z){
   let closest={dist:Infinity,u:0,pit:null};
@@ -249,12 +251,18 @@ function buildGrassTexture(){
 function addTrack(){
   const g=new THREE.Mesh(new THREE.PlaneGeometry(3400,2500),new THREE.MeshStandardMaterial({map:buildGrassTexture(),color:0xffffff,roughness:1}));g.rotation.x=-Math.PI/2;g.position.y=-.45;g.receiveShadow=true;worldObjects.add(g);
   const drain=new THREE.Mesh(new THREE.PlaneGeometry(3400,2500),new THREE.MeshStandardMaterial({color:0x456454,transparent:true,opacity:.08}));drain.rotation.x=-Math.PI/2;drain.position.y=-.42;worldObjects.add(drain);
-  addRibbon(trackPoints,-29,29,-.08,0x82917b);
+  addRibbon(trackPoints,-41,41,-.18,0x687e75);
+  addRibbon(trackPoints,-34,-29,-.07,0x90a49a);
+  addRibbon(trackPoints,29,34,-.07,0x90a49a);
+  addRibbon(trackPoints,-29,29,-.08,0x778b85);
   asphaltMesh=addRibbon(trackPoints,-ROAD_HALF,ROAD_HALF,.07,0x2c3537);
   addRibbon(trackPoints,-ROAD_HALF-3,-ROAD_HALF,.1,0xda574c,true);
   addRibbon(trackPoints,ROAD_HALF,ROAD_HALF+3,.1,0xda574c,true);
   addRibbon(trackPoints,-ROAD_HALF+1,-ROAD_HALF+1.5,.14,0xe7e7d7);
   addRibbon(trackPoints,ROAD_HALF-1.5,ROAD_HALF-1,.14,0xe7e7d7);
+  // Two smooth coloured safety lanes keep a readable boundary around each corner.
+  addRibbon(trackPoints,-34,-32,-.04,0x425e59);
+  addRibbon(trackPoints,32,34,-.04,0x425e59);
   const gridP=trackCurve.getPointAt(0),t=trackCurve.getTangentAt(0),n=new THREE.Vector3(t.z,0,-t.x);
   for(let lane=0;lane<10;lane++){
     const side=-18+lane*3.7;
@@ -287,6 +295,19 @@ function createServiceLane(pit){
   addRibbon(pit.points,-PIT_HALF,PIT_HALF,.12,0x35454a);
   addRibbon(pit.points,-PIT_HALF,-PIT_HALF+1.4,.16,0xdde9d4);
   addRibbon(pit.points,PIT_HALF-1.4,PIT_HALF,.16,0xdde9d4);
+  addRibbon(pit.points,-PIT_HALF+2,-PIT_HALF+2.6,.18,0xeaca61);
+  for(const q of [.12,.28,.44,.6,.76,.9]){
+    const center=pit.curve.getPointAt(q),tan=pit.curve.getTangentAt(q),normal=new THREE.Vector3(tan.z,0,-tan.x);
+    for(const side of [-1,1]){
+      const p=center.clone().addScaledVector(normal,side*(PIT_HALF+3));
+      addCylinder(.75,.95,1.3,0x345349,p.x,.65,p.z);
+      addCylinder(.35,.35,2.2,0xe5edb0,p.x,2.2,p.z);
+    }
+  }
+  // Green entrance and exit stripes on the service tarmac.
+  for(const q of [.08,.93]){const p=pit.curve.getPointAt(q),tan=pit.curve.getTangentAt(q);
+    const stripe=solidBox(PIT_HALF*1.55,.09,3.4,q<.2?0x91db79:0xe7d875,p.x,.23,p.z);stripe.rotation.y=getHeading(tan);
+  }
   // Pair of clear directional markers at the true drive-through entrance.
   const entrance=pit.curve.getPointAt(.10),entranceTan=pit.curve.getTangentAt(.10);
   const name=raceMode==='tour'?`PIT ${String(pit.index+1).padStart(2,'0')} · ${pit.info.name.toUpperCase()}`:'FUEL · DRIVE THROUGH';
@@ -294,8 +315,15 @@ function createServiceLane(pit){
   for(const side of [-1,1]){
     const normal=new THREE.Vector3(entranceTan.z,0,-entranceTan.x);
     const p=entrance.clone().addScaledVector(normal,side*16);
-    addCylinder(.45,.72,12,0x26584d,p.x,6,p.z);
+    addCylinder(.75,1.0,13,0x26584d,p.x,6.5,p.z);
+    const lamp=addCylinder(1.6,1.6,1.2,0xc4f194,p.x,14,p.z);lamp.material.emissive=new THREE.Color(0x9aca54);lamp.material.emissiveIntensity=.8;
   }
+  // The PIT IN markings appear BEFORE the merge so drivers can choose a lane.
+  const approach=trackCurve.getPointAt((pit.startT-.010+1)%1),approachTan=trackCurve.getTangentAt((pit.startT-.010+1)%1);
+  const approachNormal=new THREE.Vector3(approachTan.z,0,-approachTan.x);
+  const approachSide=approachNormal.dot(pit.n)>=0?1:-1;
+  const approachPos=approach.clone().addScaledVector(approachNormal,approachSide*12);
+  addWorldLabel(`PIT ${String(pit.index+1).padStart(2,'0')}   ➜`,approachPos.setY(1.5),28,5,'#4e9a67','#f5ffd1',getHeading(approachTan));
   const centre=pit.curve.getPointAt(.5),tangent=pit.curve.getTangentAt(.5),normal=new THREE.Vector3(tangent.z,0,-tangent.x);
   const out=normal.dot(pit.n)>=0?1:-1;
   const ap=centre.clone().addScaledVector(normal,out*138).setY(0);
@@ -417,6 +445,139 @@ function refreshVisiblePosters(force=false){
   }
 }
 function seededRandom(seed=142857){let k=seed>>>0;return()=>{k=(Math.imul(k,1664525)+1013904223)>>>0;return k/4294967296;};}
+function addGuardRails(){
+  // Armco beams are instanced to make the stadium affordable on integrated GPUs.
+  const beams=[],posts=[],bumpers=[];
+  function put(array,x,y,z,rx,ry,rz,angle=0){array.push({x,y,z,rx,ry,rz,angle});}
+  for(const side of [-1,1])for(let i=0;i<TRACK_SAMPLES;i+=4){
+    const u=i/TRACK_SAMPLES,mid=trackCurve.getPointAt(u),tan=trackCurve.getTangentAt(u);
+    const normal=new THREE.Vector3(tan.z,0,-tan.x),c=mid.clone().addScaledVector(normal,side*32.7);
+    if(stationData.some(p=>getPitClosest(c.x,c.z,p).dist<PIT_HALF+8))continue;
+    const j=Math.min(i+4,TRACK_SAMPLES),end=trackCurve.getPointAt(j/TRACK_SAMPLES),nextT=trackCurve.getTangentAt(j/TRACK_SAMPLES);
+    const e=end.clone().addScaledVector(new THREE.Vector3(nextT.z,0,-nextT.x),side*32.7);
+    const span=Math.hypot(e.x-c.x,e.z-c.z),angle=Math.atan2(e.x-c.x,e.z-c.z);
+    for(const h of [2.5,4.5])put(beams,(e.x+c.x)/2,h,(e.z+c.z)/2,1.25,1.05,span+1.6,angle);
+    if(i%8===0)put(posts,c.x,2.85,c.z,1.45,5.7,1.8,0);
+    if(i%24===0)put(bumpers,c.x,1.1,c.z,3,1.8,5,angle);
+  }
+  // Low pit-lane barriers follow the bypass, but stop before the merge zone.
+  for(const pit of stationData)for(let i=12;i<105;i+=3){
+    const a=pit.points[i],b=pit.points[i+3],dx=b.x-a.x,dz=b.z-a.z;
+    const distance=Math.hypot(dx,dz)||1,normal=new THREE.Vector3(dz/distance,0,-dx/distance),mid=a.clone().add(b).multiplyScalar(.5);
+    for(const side of [-1,1]){
+      const p=mid.clone().addScaledVector(normal,side*(PIT_HALF+3.5));
+      put(beams,p.x,1.45,p.z,1.15,2.3,distance+.7,Math.atan2(dx,dz));
+    }
+  }
+  for(const [data,color,metalness] of [[beams,0xc4d5d4,.72],[posts,0x344e55,.5],[bumpers,0x15393b,.05]]){
+    if(!data.length)continue;
+    const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color,metalness,roughness:.43}),data.length);
+    const dummy=new THREE.Object3D();
+    data.forEach((p,i)=>{
+      dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(p.rx,p.ry,p.rz);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=false;mesh.receiveShadow=true;worldObjects.add(mesh);
+  }
+}
+
+function addStadiumArchitecture(){
+  const rand=seededRandom(84120);
+  const steel=new THREE.MeshStandardMaterial({color:0x365359,metalness:.58,roughness:.4});
+  const roofMat=new THREE.MeshStandardMaterial({color:0xeff4ed,metalness:.2,roughness:.38,side:THREE.DoubleSide});
+  const dark=new THREE.MeshStandardMaterial({color:0x18363b,metalness:.2,roughness:.7});
+  const glass=new THREE.MeshStandardMaterial({color:0x96c9c7,metalness:.4,roughness:.21});
+  const seatColors=[0x7ce0bc,0xdaf493,0xeec99b,0xb6d0dc,0x9eafc1];
+  // Massive circular stadium apron surrounding the racetrack, but outside the road.
+  const outer=new THREE.Mesh(new THREE.RingGeometry(960,1050,128),new THREE.MeshStandardMaterial({color:0x34494c,roughness:1,side:THREE.DoubleSide}));
+  outer.rotation.x=-Math.PI/2;outer.scale.y=.77;outer.position.y=-.27;worldObjects.add(outer);
+  const oval=new THREE.EllipseCurve(0,0,1040,800,0,TWO_PI,false,0);
+  for(let i=0;i<96;i++){
+    const t=i/96,angle=t*TWO_PI,p=oval.getPoint(t),p2=oval.getPoint((i+1)/96),dx=p2.x-p.x,dz=p2.y-p.y;
+    const panel=solidBox(1.8,21,Math.hypot(dx,dz)+1.7,0x28464c,(p.x+p2.x)/2,10.5,(p.y+p2.y)/2);panel.rotation.y=Math.atan2(dx,dz);
+    if(i%4===0){const pole=addCylinder(1.8,2.3,42,0xdce4df,p.x,21,p.y);pole.castShadow=true;}
+    if(i%12===0){const pole=addCylinder(1.4,1.4,52,0x647d7a,p.x,26,p.y);solidBox(13,3,3,0xf0f5e6,p.x,52,p.y);}
+  }
+  // Stadium tribunes consist of tiered concrete, seating rows, crowd, railings,
+  // structural columns and roof cantilevers. They are arranged around turns.
+  for(const u of [.035,.13,.215,.305,.405,.51,.605,.70,.805,.91]){
+    const base=trackCurve.getPointAt(u),tangent=trackCurve.getTangentAt(u),n=new THREE.Vector3(tangent.z,0,-tangent.x);
+    const side=base.x*n.x+base.z*n.z>=0?1:-1;n.multiplyScalar(side);
+    const p=base.clone().addScaledVector(n,92);
+    const group=new THREE.Group();group.position.set(p.x,0,p.z);group.rotation.y=getHeading(tangent);worldObjects.add(group);
+    solidBox(180,6,78,0x45595a,0,3,0,group);
+    solidBox(175,17,6,0x2a4145,0,8,40,group);
+    const count=13*31;
+    const seatMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(3,1.4,1.5),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.8}),count);
+    const spectatorMesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(1.05,1.15,2.7,6),new THREE.MeshStandardMaterial({color:0xffffff,roughness:1}),count);
+    const dummy=new THREE.Object3D();let nSeats=0,nPeople=0;
+    for(let row=0;row<13;row++){
+      const h=7+row*2.15,z=-34+row*5.15;
+      solidBox(175,1.45,5.5,row%2?0x718683:0x8da29d,0,h-1,z,group);
+      for(let j=0;j<31;j++){
+        const x=-83+j*5.5+rand()*1.5;
+        dummy.position.set(x,h+.5,z+1.1);dummy.rotation.set(0,0,0);dummy.scale.setScalar(1);dummy.updateMatrix();
+        seatMesh.setMatrixAt(nSeats,dummy.matrix);seatMesh.setColorAt(nSeats,new THREE.Color(seatColors[(j+row*2)%seatColors.length]));nSeats++;
+        if((j*3+row*7)%5!==0){
+          dummy.position.y=h+2.15;dummy.updateMatrix();spectatorMesh.setMatrixAt(nPeople,dummy.matrix);
+          spectatorMesh.setColorAt(nPeople,new THREE.Color(seatColors[(j*2+row)%seatColors.length]));nPeople++;
+        }
+      }
+    }
+    seatMesh.count=nSeats;spectatorMesh.count=nPeople;
+    seatMesh.instanceMatrix.needsUpdate=true;spectatorMesh.instanceMatrix.needsUpdate=true;
+    seatMesh.castShadow=false;spectatorMesh.castShadow=false;
+    group.add(seatMesh,spectatorMesh);
+    // Roof with a polished leading edge and dark support skeleton.
+    solidBox(189,2.8,96,0xe3eae4,0,40,1,group,roofMat);
+    solidBox(192,3.4,3.5,0xaacf8d,0,39,-47,group);
+    for(const x of [-86,-42,0,42,86]){
+      solidBox(1.7,37,1.8,0x334d55,x,20,40,group,steel);
+      const beam=solidBox(1.7,1.8,94,0x334d55,x,37,0,group,steel);beam.rotation.x=-.05;
+      solidBox(1.5,15,1.5,0xb9c7c3,x,17,-38,group);
+    }
+    addWorldLabel('GHANTA CIRCUIT · GRANDSTAND',group.localToWorld(new THREE.Vector3(0,43,-49)),89,7,'#213e43','#dbf394',group.rotation.y);
+    stadiumDecor.grandstands.push({x:p.x,z:p.z,u,side,heading:group.rotation.y,width:180});
+  }
+  // Infield race-control tower and centre paddock. Surrounding bleachers
+  // remain detached from the road, so neither one occupies the driving line.
+  const tower= new THREE.Group();tower.position.set(80,0,30);worldObjects.add(tower);
+  solidBox(110,10,65,0x304d55,0,5,0,tower,steel);
+  for(let floor=0;floor<4;floor++){
+    solidBox(52,11,38,0x34565c,0,16+floor*11,0,tower,steel);
+    for(let x=-18;x<=18;x+=12)for(const z of [-19.2,19.2])solidBox(8,7,.65,0x9dd4cc,x,16+floor*11,z,tower,glass);
+    solidBox(60,1.6,44,0xf0eedd,0,21+floor*11,0,tower);
+  }
+  solidBox(66,2.6,49,0xd8ed9d,0,63,0,tower);
+  addWorldLabel('RACE CONTROL',new THREE.Vector3(80,56,53),51,8,'#15383a','#e6f5aa');
+  // Luminous circuit signs and numbered corner boards.
+  for(let i=0;i<14;i++){
+    const u=(i+.22)/14,pt=trackCurve.getPointAt(u),t=trackCurve.getTangentAt(u),nr=new THREE.Vector3(t.z,0,-t.x),sign=pt.clone().addScaledVector(nr,(pt.x*nr.x+pt.z*nr.z)>=0?45:-45);
+    solidBox(2.3,8,2.3,0x2c4c4f,sign.x,4,sign.z);
+    addWorldLabel(`T${String(i+1).padStart(2,'0')}  /  GHANTA GP`,sign.setY(11),34,6,'#19363b','#dff0a4',getHeading(t));
+  }
+}
+
+function constrainToCircuit(){
+  // Colliders follow the SAME curvilinear corridors used by the visible rails.
+  // Entry/exit at any pit is permitted, but accidental driving into the field
+  // hits an elastic barrier instead of teleporting through the stadium.
+  const track=getTrackClosest(player.x,player.z),pit=nearestPit(player.x,player.z);
+  const onService=pit.pit&&pit.dist<PIT_HALF+5;
+  const onMain=track.dist<ROAD_HALF+4;
+  if(onService||onMain)return;
+  const onPitEdge=pit.pit&&pit.dist<PIT_HALF+13&&pit.dist<track.dist;
+  const edge=onPitEdge?pit:track,limit=onPitEdge?PIT_HALF+1.4:ROAD_HALF+1.9;
+  const d=Math.max(.001,edge.dist),k=limit/d;
+  player.x=edge.x+(player.x-edge.x)*k;player.z=edge.z+(player.z-edge.z)*k;
+  player.speed*=.70;
+  // Reduce lateral rotation after an impact, preserving user steering control.
+  player.steer*=.42;
+  const tangent=onPitEdge?pit.pit.curve.getTangentAt(pit.u):trackCurve.getTangentAt(track.u);
+  const suggested=getHeading(tangent);
+  const delta=Math.atan2(Math.sin(suggested-player.heading),Math.cos(suggested-player.heading));
+  if(Math.abs(delta)<1.5)player.heading+=delta*.09;
+}
+
 function addTreesAndLandscape(){
   const rand=seededRandom(70917);
   // Lightweight instanced tyre stacks, set back from service-lane entrances.
@@ -449,58 +610,35 @@ function addTreesAndLandscape(){
   for(let i=0;i<690;i++){
     const x=(rand()-.5)*1520,z=(rand()-.5)*1220;
     const trackDist=getTrackClosest(x,z).dist;
-    if(trackDist<52)continue;
-    if(stationData.some(p=>getPitClosest(x,z,p).dist<53))continue;
-    if(Math.abs(x)>750||Math.abs(z)>570)continue;
+    if(trackDist<124)continue;
+    if(stationData.some(p=>getPitClosest(x,z,p).dist<90))continue;
+    if(Math.abs(x)>870||Math.abs(z)>670)continue;
     const scale=.8+rand()*1.4;
     treePositions.push({x,z,scale,ang:rand()*TWO_PI});
     if(treePositions.length>=320)break;
   }
   sceneryTrees=treePositions;
+  // Species-mixed 3D landscaping: rounded hardwood crowns and layered conifers.
+  // All foliage is instanced to keep GitHub Pages performant without model downloads.
   const trees=treePositions.length;
-  const treeMat=new THREE.MeshStandardMaterial({color:PINE_GREEN,roughness:1,flatShading:true});
-  const crownGeom=new THREE.ConeGeometry(8,26,7);
-  const trunks=new THREE.InstancedMesh(new THREE.CylinderGeometry(1.6,2.1,8,6),new THREE.MeshStandardMaterial({color:0x71594a,roughness:1}),trees);
-  const crowns=new THREE.InstancedMesh(crownGeom,treeMat,trees);
-  const tops=new THREE.InstancedMesh(new THREE.ConeGeometry(5,18,7),new THREE.MeshStandardMaterial({color:0x3c7153,roughness:1,flatShading:true}),trees);
   const o=new THREE.Object3D();
-  treePositions.forEach((tree,i)=>{
-    o.position.set(tree.x,3.8*tree.scale,tree.z);o.rotation.y=tree.ang;o.scale.setScalar(tree.scale);o.updateMatrix();trunks.setMatrixAt(i,o.matrix);
-    o.position.y=15*tree.scale;o.updateMatrix();crowns.setMatrixAt(i,o.matrix);
-    o.position.y=27*tree.scale;o.updateMatrix();tops.setMatrixAt(i,o.matrix);
-    const c=new THREE.Color().setHSL(.32+rand()*.1,.19+rand()*.17,.24+rand()*.13);crowns.setColorAt(i,c);
-  });
-  for(const t of [trunks,crowns,tops]){t.castShadow=true;t.receiveShadow=true;t.instanceMatrix.needsUpdate=true;worldObjects.add(t);}
-  for(let i=0;i<37;i++){
-    const a=i/37*TWO_PI,r=720+rand()*160;
-    const x=Math.cos(a)*r,z=Math.sin(a)*r*.82;
-    const m=new THREE.Mesh(new THREE.ConeGeometry(110+rand()*90,105+rand()*135,7),new THREE.MeshStandardMaterial({color:i%3===0?0x789b81:0x698b79,flatShading:true,roughness:1}));
-    m.position.set(x,48,z);m.rotation.y=rand()*TWO_PI;worldObjects.add(m);
+  const bark=new THREE.MeshStandardMaterial({color:0x64544b,roughness:1});
+  const leaves=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.98,flatShading:true});
+  const trunks=new THREE.InstancedMesh(new THREE.CylinderGeometry(1.5,2.35,15,7),bark,trees);
+  const crownA=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(10,1),leaves,trees);
+  const crownB=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(8,1),leaves,trees);
+  const crownC=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(7,1),leaves,trees);
+  for(let i=0;i<trees;i++){
+    const tr=treePositions[i],hardwood=i%4!==0,scale=tr.scale;
+    tr.kind=hardwood?'oak':'cedar';
+    o.position.set(tr.x,7.5*scale,tr.z);o.rotation.set(0,tr.ang,0);o.scale.setScalar(scale);o.updateMatrix();trunks.setMatrixAt(i,o.matrix);
+    const green=new THREE.Color().setHSL(.28+rand()*.11,.35+rand()*.25,.20+rand()*.13);
+    o.position.set(tr.x,hardwood?20*scale:18*scale,tr.z);o.scale.set(scale*(hardwood?1.30:.86),scale*(hardwood?.82:1.6),scale*(hardwood?1.22:.86));o.updateMatrix();crownA.setMatrixAt(i,o.matrix);crownA.setColorAt(i,green);
+    o.position.set(tr.x-4*scale,hardwood?25*scale:31*scale,tr.z+2*scale);o.scale.set(scale*(hardwood?.93:.55),scale*(hardwood?.85:1.35),scale*(hardwood?.92:.55));o.updateMatrix();crownB.setMatrixAt(i,o.matrix);crownB.setColorAt(i,green.clone().offsetHSL(.02,.04,.09));
+    o.position.set(tr.x+5*scale,hardwood?23*scale:40*scale,tr.z-1.2*scale);o.scale.set(scale*(hardwood?.85:.38),scale*(hardwood?.8:1.15),scale*(hardwood?.85:.38));o.updateMatrix();crownC.setMatrixAt(i,o.matrix);crownC.setColorAt(i,green.clone().offsetHSL(-.02,.02,-.03));
   }
-  // Spectator grandstands, clustered along the outside of the racing line.
-  for(const u of [.09,.23,.48,.73,.91]){
-    const p=trackCurve.getPointAt(u),tan=trackCurve.getTangentAt(u);
-    let n=new THREE.Vector3(tan.z,0,-tan.x),side=(p.x*n.x+p.z*n.z)>=0?1:-1;
-    n.multiplyScalar(side);
-    const pos=p.clone().addScaledVector(n,65);
-    const group=new THREE.Group();group.position.set(pos.x,0,pos.z);group.rotation.y=getHeading(tan);
-    worldObjects.add(group);
-    solidBox(125,5,45,0x496c63,0,2.5,0,group);
-    const people=new THREE.InstancedMesh(new THREE.CylinderGeometry(.9,1.1,2,5),new THREE.MeshStandardMaterial({color:0xffffff,roughness:1}),7*19);
-    const dummy=new THREE.Object3D();let spectator=0;
-    for(let step=0;step<7;step++){
-      solidBox(120,1.2,5.1,step%2?0x9fb2a4:0xccd3ad,0,5.3+step*2,-18+step*5.1,group);
-      for(let person=0;person<19;person++){
-        dummy.position.set(-55+person*6+rand()*2,7+step*2,-17+step*5.1);dummy.updateMatrix();
-        people.setMatrixAt(spectator,dummy.matrix);
-        people.setColorAt(spectator,new THREE.Color(person%5===0?0xe1d3a4:person%4===0?0xe48b6f:0x294f50));
-        spectator++;
-      }
-    }
-    people.castShadow=true;people.instanceMatrix.needsUpdate=true;group.add(people);
-    const roof=solidBox(131,2.5,52,0xe9e8ca,0,21.8,0,group);roof.castShadow=true;
-    for(const s of [-1,1])for(const z of [-1,1])solidBox(1.3,23,1.3,0xd4d6be,s*59,11.3,z*19,group);
-    addWorldLabel('SG GRANDSTAND',group.localToWorld(new THREE.Vector3(0,24,-25)),46,5,'#143a35','#deeea5',group.rotation.y);
+  for(const m of [trunks,crownA,crownB,crownC]){
+    m.instanceMatrix.needsUpdate=true;m.castShadow=true;m.receiveShadow=true;worldObjects.add(m);
   }
   // Floodlights and light towers distributed around the circuit.
   for(const u of [.04,.16,.28,.40,.52,.64,.76,.88]){
@@ -511,16 +649,12 @@ function addTreesAndLandscape(){
     const flood=solidBox(17,4,2,0xf7efd5,pos.x,44.5,pos.z);flood.material.emissive=new THREE.Color(0xececc2);flood.material.emissiveIntensity=.2;
     const pole=solidBox(6,.5,2,0x37504b,pos.x,47,pos.z);
   }
-  // Small lakes, rock clusters and shrubs away from driving surfaces.
-  for(const [x,z,rad] of [[610,390,53],[-670,-390,43],[630,-420,39]]){
-    const pond=new THREE.Mesh(new THREE.CircleGeometry(rad,50),new THREE.MeshStandardMaterial({color:0x528e99,metalness:.13,roughness:.35}));pond.rotation.x=-Math.PI/2;pond.position.set(x,-.15,z);worldObjects.add(pond);
-    const border=new THREE.Mesh(new THREE.RingGeometry(rad,rad+6,64),new THREE.MeshStandardMaterial({color:0xa1ae91,side:THREE.DoubleSide}));border.rotation.x=-Math.PI/2;border.position.set(x,-.10,z);worldObjects.add(border);
-  }
-  for(let i=0;i<140;i++){
-    const x=(rand()-.5)*1450,z=(rand()-.5)*1100;if(getTrackClosest(x,z).dist<40)continue;
-    if(stationData.some(p=>getPitClosest(x,z,p).dist<40))continue;
-    const b=new THREE.Mesh(new THREE.DodecahedronGeometry(2+rand()*5,0),new THREE.MeshStandardMaterial({color:i%3===0?0xbfc8ac:0x667e68,roughness:1,flatShading:true}));
-    b.position.set(x,1,z);b.scale.y=.6;b.rotation.y=rand()*TWO_PI;worldObjects.add(b);
+  // Landscaped pedestrian promenades and raised concrete planter islands.
+  for(let i=0;i<45;i++){
+    const x=(rand()-.5)*1620,z=(rand()-.5)*1210;
+    if(getTrackClosest(x,z).dist<65||stationData.some(p=>getPitClosest(x,z,p).dist<60))continue;
+    const box=solidBox(6+rand()*6,1.8,5+rand()*7,i%2?0x6e8b82:0xa1b2a7,x,.1,z);
+    box.rotation.y=rand()*TWO_PI;
   }
   const paddockPos=trackCurve.getPointAt(.96),paddockT=trackCurve.getTangentAt(.96),padSide=new THREE.Vector3(paddockT.z,0,-paddockT.x);
   padSide.multiplyScalar((paddockPos.x*padSide.x+paddockPos.z*padSide.z)>=0?1:-1);
@@ -598,7 +732,7 @@ function newScene(){
     camera=new THREE.PerspectiveCamera(62,1,.15,4500);
     window.addEventListener('resize',resizeRenderer,{passive:true});
   }
-  if(scene){for(const ch of [...scene.children])scene.remove(ch);disposeObject(ch);}
+  if(scene){for(const child of [...scene.children]){scene.remove(child);disposeObject(child);}}
   scene=new THREE.Scene();scene.background=new THREE.Color(0x9dccc9);scene.fog=new THREE.FogExp2(0x9bc4b6,.00061);
   scene.add(new THREE.HemisphereLight(0xe6f5e8,0x5f755b,2.15));
   sun=new THREE.DirectionalLight(0xfff1d5,2.35);sun.position.set(-220,450,170);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
@@ -609,6 +743,8 @@ function newScene(){
   stationData.forEach(createServiceLane);
   if(raceMode==='arcade')placeArcadeBoostPads();
   addTreesAndLandscape();
+  addGuardRails();
+  addStadiumArchitecture();
   player.mesh=makeCar(player.colour);scene.add(player.mesh);
   for(const state of opponents.values()){state.mesh=makeCar(state.colour,state.name);scene.add(state.mesh);}
   resizeRenderer();
@@ -718,6 +854,7 @@ function updatePhysics(dt){
   }
   const step=player.speed*dt;
   player.x+=Math.sin(player.heading)*step;player.z-=Math.cos(player.heading)*step;
+  constrainToCircuit();
   if(Math.abs(player.x)>1750||Math.abs(player.z)>1350){player.x=clamp(player.x,-1745,1745);player.z=clamp(player.z,-1345,1345);player.speed*=.1;}
   if(player.speed>0&&player.fuel>0)player.fuel=Math.max(0,player.fuel-step/(2*trackLength));
   if(player.fuel<=0){player.speed=THREE.MathUtils.damp(player.speed,0,3.2,dt);if(Math.abs(player.speed)<.12)player.speed=0;}
@@ -804,8 +941,8 @@ function updateCamera(dt){
     camera.lookAt(vectors.currentTarget);
     return;
   }
-  const distance=cameraMode===0?58:cameraMode===1?95:cameraMode===2?25:0;
-  const height=cameraMode===0?31:cameraMode===1?110:cameraMode===2?10:245;
+  const distance=cameraMode===0?74:cameraMode===1?118:cameraMode===2?28:0;
+  const height=cameraMode===0?40:cameraMode===1?125:cameraMode===2?12:245;
   let desire=new THREE.Vector3(c.x-Math.sin(heading)*distance,height,c.z+Math.cos(heading)*distance);
   const target=new THREE.Vector3(c.x+Math.sin(heading)*18,5,c.z-Math.cos(heading)*18);
   if(cameraMode===3){desire.set(c.x,235,c.z+1);target.set(c.x,0,c.z);}
@@ -868,18 +1005,40 @@ function updateDashboard(){
 }
 function updateMinimap(){
   if(!sceneReady)return;
-  const cvs=$('miniMap'),ctx=cvs.getContext('2d'),W=cvs.width,H=cvs.height;
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#0c2627';ctx.fillRect(0,0,W,H);
-  const bounds={minX:-1090,maxX:1100,minZ:-770,maxZ:775},sx=(W-18)/(bounds.maxX-bounds.minX),sz=(H-14)/(bounds.maxZ-bounds.minZ);
-  const fit=Math.min(sx,sz),offX=(W-(bounds.maxX-bounds.minX)*fit)/2,offY=(H-(bounds.maxZ-bounds.minZ)*fit)/2;
-  const point=(p)=>[offX+(p.x-bounds.minX)*fit,H-(offY+(p.z-bounds.minZ)*fit)];
-  ctx.strokeStyle='#678781';ctx.lineWidth=7;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
-  trackPoints.forEach((p,i)=>{let [x,y]=point(p);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
-  ctx.strokeStyle='#d8e7cf';ctx.lineWidth=.8;ctx.stroke();
-  for(const p of stationData){ctx.strokeStyle=raceMode==='tour'?'#eeb080':'#d8f386';ctx.lineWidth=3.5;ctx.beginPath();p.points.forEach((pt,i)=>{const [x,y]=point(pt);if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();}
-  for(const opponent of opponents.values()){const [x,y]=point(opponent);ctx.fillStyle=opponent.hex||'#faa379';ctx.beginPath();ctx.arc(x,y,3.6,0,TWO_PI);ctx.fill();}
-  const [x,y]=point(player);ctx.save();ctx.translate(x,y);ctx.rotate(-player.heading);ctx.fillStyle='#d7f36b';ctx.strokeStyle='#15352d';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(-5,5);ctx.lineTo(5,5);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  const canvas=$('miniMap'),ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  const extents={minX:-1060,maxX:1060,minZ:-750,maxZ:750};
+  const fit=Math.min((W-25)/(extents.maxX-extents.minX),(H-24)/(extents.maxZ-extents.minZ));
+  const cx=(W-(extents.maxX-extents.minX)*fit)*.5,cy=(H-(extents.maxZ-extents.minZ)*fit)*.5;
+  const at=p=>[cx+(p.x-extents.minX)*fit,H-(cy+(p.z-extents.minZ)*fit)];
+  ctx.fillStyle='#0b282e';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(168,204,192,.11)';ctx.lineWidth=.7;
+  for(let x=12;x<W;x+=28){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=15;y<H;y+=28){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const drawTrack=()=>{ctx.beginPath();trackPoints.forEach((p,i)=>{const [x,y]=at(p);if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.closePath();};
+  ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle='#436364';ctx.lineWidth=9;drawTrack();ctx.stroke();
+  ctx.strokeStyle='#e0eade';ctx.lineWidth=4.5;drawTrack();ctx.stroke();
+  ctx.strokeStyle='#21393e';ctx.lineWidth=1.7;drawTrack();ctx.stroke();
+  // Eleven compact numbered stop markers; only the nearby pit is emphasised.
+  const nearest=nearestPit(player.x,player.z);
+  const current=nearest.pit?.index??-1;
+  for(const pit of stationData){
+    const q=pit.curve.getPointAt(.5),[x,y]=at(q),selected=pit.index===current;
+    if(selected){
+      ctx.lineWidth=2.3;ctx.strokeStyle='#d5ea84';ctx.beginPath();pit.points.forEach((p,i)=>{const [a,b]=at(p);i?ctx.lineTo(a,b):ctx.moveTo(a,b);});ctx.stroke();
+    }
+    ctx.fillStyle=selected?'#d6f584':'#edb17e';ctx.strokeStyle='#102b2d';ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.arc(x,y,selected?5.8:3.2,0,TWO_PI);ctx.fill();ctx.stroke();
+    if(selected&&raceMode==='tour'){ctx.fillStyle='#102b2d';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 7px Arial';ctx.fillText(String(pit.index+1),x,y+0.3);}
+  }
+  const start=trackCurve.getPointAt(0),[sx,sy]=at(start);
+  ctx.strokeStyle='#dce99a';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(sx,sy,3.2,0,TWO_PI);ctx.stroke();
+  for(const o of opponents.values()){const [x,y]=at(o);ctx.fillStyle=o.hex||'#f3ae85';ctx.beginPath();ctx.arc(x,y,3.4,0,TWO_PI);ctx.fill();}
+  const [x,y]=at(player);ctx.save();ctx.translate(x,y);ctx.rotate(-player.heading);ctx.shadowBlur=7;ctx.shadowColor='#d8f58b';
+  ctx.fillStyle='#d7f484';ctx.strokeStyle='#0a2729';ctx.lineWidth=1.8;
+  ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(-4.6,5.2);ctx.lineTo(4.6,5.2);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  ctx.font='800 8px Arial';ctx.textAlign='left';ctx.fillStyle='#8ab1ad';ctx.fillText('SG · CIRCUIT',9,12);
+  ctx.textAlign='right';ctx.fillText('S / F',W-9,H-7);
 }
 function tick(now){
   const dt=Math.min(.055,(now-lastTick)/1000||.016);lastTick=now;lastFrameDt=dt;
@@ -1017,10 +1176,11 @@ function attachHostConnection(conn){
     if(!msg||typeof msg!=='object')return;
     if(msg.type==='ready'&&msg.round===raceState.round){raceState.ready.add(conn.peer);return;}
     if(msg.type==='hello'){
+      if(msg.protocol!==NETWORK_PROTOCOL){send(conn,{type:'reject',reason:'Your racing game is out of date. Refresh this page, then rejoin the room.'});return;}
       if(raceStarted||raceState.started){send(conn,{type:'reject',reason:'This race has already started.'});return;}
       const racerName=cleanName(msg.name);
       raceState.remote.set(conn.peer,{name:racerName,lap:0,finished:false,time:null});
-      send(conn,{type:'welcome',id:conn.peer,room:raceState.roomCode,laps:raceSettings.laps,players:allParticipants()});
+      send(conn,{type:'welcome',protocol:NETWORK_PROTOCOL,id:conn.peer,room:raceState.roomCode,laps:raceSettings.laps,players:allParticipants()});
       sendRoster();$('roomStatus').textContent=`ROOM OPEN · ${allParticipants().length} DRIVER(S) ON GRID`;
     }
     if(msg.type==='state'&&raceStarted&&msg.round===raceState.round&&msg.driver&&msg.driver.id===conn.peer){
@@ -1069,7 +1229,7 @@ function joinRoom(){
   peer.on('open',()=>{
     const conn=peer.connect(raceState.hostId,{reliable:true,serialization:'json'});
     raceState.hostConn=conn;
-    conn.on('open',()=>{send(conn,{type:'hello',name:raceState.name});$('roomStatus').textContent='CONNECTED · WAITING FOR THE HOST…';});
+    conn.on('open',()=>{send(conn,{type:'hello',protocol:NETWORK_PROTOCOL,name:raceState.name});$('roomStatus').textContent='CONNECTED · WAITING FOR THE HOST…';});
     conn.on('data',msg=>handleGuestMessage(msg));
     conn.on('error',err=>{setLobbyError('Unable to connect to this room: '+(err.message||'network problem'));});
     conn.on('close',()=>{
@@ -1085,6 +1245,7 @@ function handleGuestMessage(msg){
   if(!msg||typeof msg!=='object')return;
   if(msg.type==='reject'){setLobbyError(msg.reason||'Unable to join this room.');$('roomStatus').textContent='JOIN REQUEST REJECTED';}
   if(msg.type==='welcome'){
+    if(msg.protocol!==NETWORK_PROTOCOL){setLobbyError('Host is using an older game version. Ask everyone to refresh, then create a new room.');return;}
     clearTimeout(raceState._joinTimeout);raceState.joined=true;raceSettings.laps=clamp(Number(msg.laps)||3,2,12);
     $('roomStatus').textContent=`CONNECTED · ${raceSettings.laps} LAP RACE · WAITING FOR HOST`;
     updateNetworkStatus('JOINED / '+raceState.roomCode);applyRoster(msg.players||[]);
@@ -1273,7 +1434,7 @@ async function initialise(){
       if(search.get('room')){$('roomInput').value=parseRoomCode(search.get('room'));setLobbyError('Enter your driver name and select JOIN ROOM.');}
     }
     requestAnimationFrame(tick);
-  }catch(error){console.error(error);reportError(error.message||'WebGL initialisation failed. Try a modern browser.');}
+  }catch(error){console.error('RC Grand Prix startup failure:',error?.stack||error);reportError(error.message||'WebGL initialisation failed. Try a modern browser.');}
 }
 window.RC_GAME_STATUS=()=>({mode:raceMode,gameRunning,raceStarted,
   round:raceState.round,networkRole:raceState.role,remotePlayers:raceState.remote.size,

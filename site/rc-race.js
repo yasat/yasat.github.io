@@ -1052,7 +1052,7 @@ function setMode(mode){
   updateDashboard();refreshVisiblePosters(true);
 }
 function clearKeys(){for(const key of Object.keys(keys))keys[key]=false;touchPointers.clear();}
-function keysAllowed(){return gameRunning&&(raceStarted||countdownEnd>performance.now())&&$('welcomeOverlay').hidden&&$('lobbyOverlay').hidden&&$('finishOverlay').hidden&&$('raceGuide').hidden&&!inspector&&!player.finished;}
+function keysAllowed(){return gameRunning&&(raceStarted||countdownEnd>performance.now())&&$('welcomeOverlay').hidden&&$('lobbyOverlay').hidden&&$('finishOverlay').hidden&&$('raceGuide').hidden&&$('workProgressOverlay').hidden&&!inspector&&!player.finished;}
 function updatePhysics(dt){
   if(!gameRunning||!raceStarted||inspector||!$('raceGuide').hidden||raceEnded)return;
   dt=Math.min(dt,.04);

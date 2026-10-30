@@ -10,7 +10,7 @@ A static GitHub Pages website with three experiences:
 
 The new game is an F1-inspired, scenic 3D RC car circuit with a dramatically smaller RC car and damped, speed-sensitive steering, with an asphalt track, red/white kerbs, start/finish markings, a gantry, grandstands and spectators, service garages, trackside signs, floodlights, pine forests, ponds, landscape, and detailed miniature RC cars.
 
-**Eleven extra-long résumé pit stops:** Each curved, off-main-track service lane spans roughly 400–505 in-game distance units; one per section: About, Research, Collaborations, Publications, Teaching, Educational Innovation, Mentorship, Education, Professional Software Engineering, Academic Service, and Contact. Each pit lane features permanent in-world billboards for **every one of that section's résumé entries** (42 individual boards in the current content). Landscape-format board images contain the **complete text** of each item, not an abbreviated abstract, plus relevant dates, status, metadata, and visible link labels. There are no pop-up résumé cards. Press **E** near a poster to smoothly zoom the camera toward its in-world surface, and E again to continue. Scroll to zoom closer. This is a camera mode, not a modal or popup. A pit guide provides an optional index and direct navigation to the eleven physical pit lanes.
+**Eleven extra-long résumé pit stops:** Each curved, off-main-track service lane spans roughly 400–505 in-game distance units; one per section: About, Research, Collaborations, Publications, Teaching, Educational Innovation, Mentorship, Education, Professional Software Engineering, Academic Service, and Contact. Each pit lane features permanent in-world billboards for **every one of that section's résumé entries** (39 individual boards in the current content). Landscape-format board images contain the **complete text** of each item, not an abbreviated abstract, plus relevant dates, status, metadata, and visible link labels. There are no pop-up résumé cards. Press **E** near a poster to smoothly zoom the camera toward its in-world surface, and E again to continue. Scroll to zoom closer. This is a camera mode, not a modal or popup. A pit guide provides an optional index and direct navigation to the eleven physical pit lanes.
 
 **Automatically synchronized résumé content:** On each visit, the 3D game fetches `index.html` and parses its sections and entries, so subsequent updates to your text résumé appear on billboards without editing the game. A snapshot fallback is bundled in `site/rc-resume-data.js` for resilience; if the homepage structure changes significantly, run `python update-resume-snapshot.py` at repository root to refresh it.
 
@@ -42,7 +42,7 @@ The 3D renderer is **Three.js 0.180.0** loaded from jsDelivr, and optional multi
 
 ## Visual rebuild and compatibility camera (October 2026)
 
-The October revision spaces the 42 signs along the **outer edges** of 11 longer pit lanes, dynamically checks clearance from the main racing surface (including at hairpins), shifts any conflicting posters, uses landscape sign faces, renders only the current pit-lane exhibits in the 2.5D view, makes RC vehicles about half their former size, and replaces aggressive steering with steering damping and modest road guidance. The fallback rendering now clips road polygons at the near camera plane, uses a physically aligned horizon, and adds additional scenery.
+The October revision spaces the 39 signs along the **outer edges** of 11 longer pit lanes, dynamically checks clearance from the main racing surface (including at hairpins), shifts any conflicting posters, uses landscape sign faces, renders only the current pit-lane exhibits in the 2.5D view, makes RC vehicles about half their former size, and replaces aggressive steering with steering damping and modest road guidance. The fallback rendering now clips road polygons at the near camera plane, uses a physically aligned horizon, and adds additional scenery.
 
 ### Earlier blank-screen issue
 
@@ -67,19 +67,23 @@ Visit `http://localhost:8000/` (text résumé), `/game.html` (2D), or `/city.htm
 3. In **Settings → Pages**, select **GitHub Actions**. The included `.github/workflows/deploy.yml` publishes the contents of `site/`.
 4. Visit `https://yasat.github.io/city.html` and test both modes. Share an Arcade room URL with a friend to test two-browser peer-to-peer racing.
 
-The `original-quarto/` folder is preserved as an undeployed archive. The 2D game and full text résumé were not rewritten; the navigation copy pointing to the new 3D racer was updated.
+The `original-quarto/` folder is preserved as an undeployed archive. The 2D game is preserved but its navigation buttons are hidden. The text résumé was updated to match the supplied academic CV. Links to the 3D experience are labelled “View my Resume in 3D”, and the 3D page opens with a dismissible work-in-progress notice.
 
 ## Testing notes
 
-- JavaScript parsing: `node --check` passed for both racing modules.
-- Physics regression harness: smooth acceleration, turning, braking and steering return passed.
-- Multiplayer state-machine harness: host launch, guest launch, stale round rejection, and fresh host/guest second-round resets passed using simulated networking.
-- 2.5D renderer rendered multiple track viewpoints and a résumé pit-lane viewpoint in an isolated browser canvas without script errors.
-- Poster generator created all 42 résumé item canvases without drawing any text beyond their bounds.
-- Sampled pit geometry is roughly 400–505 game-distance units per lane. All 42 poster placements cleared the main track in the geometry safety check.
+- JavaScript parsing: `node --check` passed for the modified 3D racing module and refreshed résumé snapshot.
+- Prior physics regression harness covered acceleration, turning, braking and steering return; these tests were not rerun for the content-only refresh.
+- Prior multiplayer state-machine checks used simulated networking; they were not rerun for this content update.
+- Previous 2.5D renderer checks covered multiple track and pit-lane viewpoints; those tests were not rerun for this update.
+- The updated 39 résumé entries were checked against the billboard text-sizing calculation; all have estimated text heights within the board boundary.
+- Pit-lane geometry was not changed by this update; a new in-game geometric clearance test has not been run.
 - **Not verified:** actual site under normal web-network conditions in a live WebGL browser, and a live two-device PeerJS/WebRTC session. The simulation tests do **not** prove cross-device connectivity; PeerJS public signalling and browser NAT restrictions still apply.
 
 
 - `node --check site/rc-race.js` validates JavaScript parsing.
-- The résumé snapshot generator extracts the same 11 sections and 42 items from `site/index.html`.
+- The résumé snapshot generator extracts the same 11 sections and 39 items from `site/index.html`.
 - Functional 3D/WebRTC testing should be performed in real browsers with WebGL and external CDN access. WebRTC availability depends on the internet environment. The **Multiplayer** feature is a usable PeerJS implementation, not a guarantee that every NAT/router configuration will connect.
+
+## Résumé and interface refresh (October 30, 2026)
+
+The text résumé in `site/index.html` is aligned to `Satwik_full_CV.pdf` supplied by the owner. Published, accepted and submitted status is distinguished. Teaching plans remain marked as not yet delivered. The downloadable PDF is not embedded in the site. `site/rc-resume-data.js` has been regenerated from the updated text résumé; the racing game also reloads `index.html` on each visit. All links to the legacy 2D game are hidden through the `hidden-2d-link` class; its implementation remains intact and accessible by direct URL. The new entry notice appears on loading `city.html`, with a Continue button to access the original 3D game menu.

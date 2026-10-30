@@ -1,108 +1,102 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0c171b" />
-  <meta name="description" content="Drive through the research, publications, teaching and software engineering journey of Satwik Ghanta, PhD researcher at the University of Glasgow." />
-  <meta property="og:title" content="Satwik Ghanta | The Driving Game" />
-  <meta property="og:description" content="A top-down interactive research portfolio. Drive a remote control car around a miniature research arena on my desk." />
-  <title>Drive Through My Research | Satwik Ghanta</title>
-  <link rel="canonical" href="https://yasat.github.io/game.html" />
-  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
-  <link rel="stylesheet" href="styles.css" />
-  <script src="game-data.js" defer></script>
-  <script src="game.js" defer></script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<meta content="#0c171b" name="theme-color"/>
+<meta content="Drive through the research, publications, teaching and software engineering journey of Satwik Ghanta, PhD researcher at the University of Glasgow." name="description"/>
+<meta content="Satwik Ghanta | The Driving Game" property="og:title"/>
+<meta content="A top-down interactive research portfolio. Drive a remote control car around a miniature research arena on my desk." property="og:description"/>
+<title>Drive Through My Research | Satwik Ghanta</title>
+<link href="https://yasat.github.io/game.html" rel="canonical"/>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="styles.css?v=12" rel="stylesheet"/>
+<script defer="" src="game-data.js"></script>
+<script defer="" src="game.js"></script>
 </head>
 <body class="game-page">
-  <a class="skip-link" href="index.html">Skip the game and read my resume</a>
-  <div class="app-shell">
-    <header class="site-header">
-      <a class="brand" href="index.html" aria-label="Satwik Ghanta, text resume homepage">
-        <span class="brand-mark" aria-hidden="true"><span class="brand-road"></span><span class="brand-car"></span></span>
-        <span class="brand-text"><strong>SATWIK <span>GHANTA</span></strong><small>RESEARCHER / BUILDER / EDUCATOR</small></span>
-      </a>
-      <nav class="header-nav" aria-label="Main navigation">
-        <a class="nav-active" href="game.html" aria-current="page">2D game</a><a href="city.html?start=1">3D RC race</a>
-        <a href="index.html#research">Research</a>
-        <a href="index.html#publications">Publications</a>
-      </nav>
-      <div class="header-actions">
-        <button class="icon-button map-toggle" id="mapToggle" type="button" aria-expanded="false" aria-controls="mapPanel">Map</button>
-        <a class="connect-link" href="index.html">Text version</a>
-      </div>
-    </header>
-
-    <main class="game-stage" id="stage">
-      <canvas id="world" tabindex="0" aria-label="Top-down driving map. Use the arrow keys or W A S D to drive through resume blocks. Use district buttons to navigate without driving."></canvas>
-      <div class="canvas-vignette" aria-hidden="true"></div>
-      <div class="scene-meta" aria-hidden="true"><span class="live-dot"></span> RC RESEARCH CIRCUIT <span class="meta-sep">/</span> DESKTOP EDITION</div>
-      <button class="desk-view-button" id="deskViewToggle" type="button" aria-pressed="false">View whole desk</button>
-
-      <aside class="map-panel" id="mapPanel" aria-label="Map and district navigation">
-        <div class="eyebrow">THE WORLD MAP</div>
-        <h1>One career.<br /><em>Eight districts.</em></h1>
-        <p class="map-description">The eight neighbourhoods are printed on a miniature track, surrounded by a protective rail. Drive your little RC car through the cards to discover my work.</p>
-        <div class="map-menu-heading"><span>EXPLORE DISTRICTS</span><span>01 - 08</span></div>
-        <nav id="districtNav" class="district-nav" aria-label="Jump to district"></nav>
-        <div class="map-footer"><span class="map-footer-glyph">+</span><span>Break a card, find a story.<br />It resets when you drive away.</span></div>
-      </aside>
-
-      <aside class="discovery-panel" id="discoveryPanel" aria-live="polite" aria-atomic="true">
-        <div class="discovery-header"><span class="eyebrow">YOUR DISCOVERY LOG</span><button class="detail-toggle" id="detailToggle" type="button" aria-controls="discoveryContent" aria-expanded="false" aria-label="Expand discovery details">Expand</button><span class="signal-icon" aria-hidden="true">INFO</span></div>
-        <div class="discovery-content" id="discoveryContent">
-          <div class="empty-mark" aria-hidden="true">01</div>
-          <div class="discovery-kicker">READY FOR THE ROAD?</div>
-          <h2>Your next<br /><em>discovery awaits.</em></h2>
-          <p>Drive into one of the colourful resume cards. It will burst into pieces and reveal more about my work here.</p>
-          <div class="discovery-tip">TIP: USE <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> OR ARROW KEYS</div>
-        </div>
-        <a class="read-all" href="index.html">Prefer reading? Explore the full resume</a>
-      </aside>
-
-      <div class="progress-hud" role="status" aria-label="Discovery progress">
-        <span class="progress-symbol" aria-hidden="true">+</span>
-        <div class="progress-label"><strong>FIELD NOTES COLLECTED</strong><span id="progressText">0 of 32 discovered</span></div>
-        <div class="progress-track"><span id="progressFill"></span></div>
-      </div>
-
-      <div class="driving-hud" aria-label="Driving status">
-        <span class="speed-dial"><strong id="speedText">00</strong><small>SPEED*</small></span>
-        <span class="hud-divider"></span>
-        <span class="drive-instructions">W / Up: accelerate <span> | </span> S / Down: reverse <span> | </span> A / D: steer<br /><small>* Playful speed indicator, not physical speed</small></span>
-        <button class="soundless-help" type="button" id="helpButton" aria-label="Show instructions">?</button>
-      </div>
-      <div class="mini-map" aria-hidden="true"><canvas id="minimap" width="190" height="138"></canvas><span>YOUR POSITION</span></div>
-      <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-      <div class="touch-controls" aria-label="Touch driving controls">
-        <button class="touch-control steering-left" type="button" data-control="left" aria-label="Steer left">LEFT</button>
-        <button class="touch-control steering-right" type="button" data-control="right" aria-label="Steer right">RIGHT</button>
-        <button class="touch-control throttle" type="button" data-control="up" aria-label="Accelerate">GO</button>
-        <button class="touch-control reverse" type="button" data-control="down" aria-label="Reverse">REV</button>
-      </div>
-    </main>
-  </div>
-
-  <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-labelledby="introTitle">
-    <div class="intro-card">
-      <div class="intro-left">
-        <div class="intro-eyebrow">AN INTERACTIVE RESEARCH PORTFOLIO <span> / 2026</span></div>
-        <h2 id="introTitle">Your research.<br />One tiny <em>RC car.</em></h2>
-        <p>Hi, I'm <strong>Satwik</strong>, a PhD researcher in Computing Science at the University of Glasgow. I built a tiny RC car arena on my desk. Drive past the laptop and books, steer around the miniature map, and discover my work.</p>
-        <div class="intro-controls"><span>DRIVING CONTROLS</span><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>or arrow keys to drive</span></div>
-        <div class="intro-buttons"><button type="button" class="start-button" id="startButton">Start driving</button><a href="index.html" class="skip-intro">Read the text resume</a></div>
-      </div>
-      <div class="intro-art" aria-hidden="true">
-        <div class="art-grid"></div><div class="art-road road-one"></div><div class="art-road road-two"></div>
-        <div class="art-card card-one"><small>01 / RESEARCH</small><strong>SUSTAINABLE<br />SOFTWARE</strong></div>
-        <div class="art-card card-two"><small>02 / DISCOVER</small><strong>MAKE AN<br />IMPACT</strong></div>
-        <div class="art-car"><div class="art-windshield"></div><div class="art-roof"></div><div class="art-antenna"></div></div>
-        <div class="art-label">A DESK-SIZED JOURNEY THROUGH MY RESEARCH</div>
-      </div>
-      <button class="intro-close" id="introClose" type="button" aria-label="Close introduction and start driving">X</button>
-    </div>
-  </div>
-  <noscript><div class="noscript">The driving game requires JavaScript. You can still read my <a href="index.html">complete text resume</a>.</div></noscript>
+<a class="skip-link" href="index.html">Skip the game and read my resume</a>
+<div class="app-shell">
+<header class="site-header">
+<a aria-label="Satwik Ghanta, text resume homepage" class="brand" href="index.html">
+<span aria-hidden="true" class="brand-mark"><span class="brand-road"></span><span class="brand-car"></span></span>
+<span class="brand-text"><strong>SATWIK <span>GHANTA</span></strong><small>RESEARCHER / BUILDER / EDUCATOR</small></span>
+</a>
+<nav aria-label="Main navigation" class="header-nav">
+<a aria-current="page" aria-hidden="true" class="nav-active hidden-2d-link" href="game.html" tabindex="-1">2D game</a><a href="city.html?start=1">View my Resume in 3D</a>
+<a href="index.html#research">Research</a>
+<a href="index.html#publications">Publications</a>
+</nav>
+<div class="header-actions">
+<button aria-controls="mapPanel" aria-expanded="false" class="icon-button map-toggle" id="mapToggle" type="button">Map</button>
+<a class="connect-link" href="index.html">Text version</a>
+</div>
+</header>
+<main class="game-stage" id="stage">
+<canvas aria-label="Top-down driving map. Use the arrow keys or W A S D to drive through resume blocks. Use district buttons to navigate without driving." id="world" tabindex="0"></canvas>
+<div aria-hidden="true" class="canvas-vignette"></div>
+<div aria-hidden="true" class="scene-meta"><span class="live-dot"></span> RC RESEARCH CIRCUIT <span class="meta-sep">/</span> DESKTOP EDITION</div>
+<button aria-pressed="false" class="desk-view-button" id="deskViewToggle" type="button">View whole desk</button>
+<aside aria-label="Map and district navigation" class="map-panel" id="mapPanel">
+<div class="eyebrow">THE WORLD MAP</div>
+<h1>One career.<br/><em>Eight districts.</em></h1>
+<p class="map-description">The eight neighbourhoods are printed on a miniature track, surrounded by a protective rail. Drive your little RC car through the cards to discover my work.</p>
+<div class="map-menu-heading"><span>EXPLORE DISTRICTS</span><span>01 - 08</span></div>
+<nav aria-label="Jump to district" class="district-nav" id="districtNav"></nav>
+<div class="map-footer"><span class="map-footer-glyph">+</span><span>Break a card, find a story.<br/>It resets when you drive away.</span></div>
+</aside>
+<aside aria-atomic="true" aria-live="polite" class="discovery-panel" id="discoveryPanel">
+<div class="discovery-header"><span class="eyebrow">YOUR DISCOVERY LOG</span><button aria-controls="discoveryContent" aria-expanded="false" aria-label="Expand discovery details" class="detail-toggle" id="detailToggle" type="button">Expand</button><span aria-hidden="true" class="signal-icon">INFO</span></div>
+<div class="discovery-content" id="discoveryContent">
+<div aria-hidden="true" class="empty-mark">01</div>
+<div class="discovery-kicker">READY FOR THE ROAD?</div>
+<h2>Your next<br/><em>discovery awaits.</em></h2>
+<p>Drive into one of the colourful resume cards. It will burst into pieces and reveal more about my work here.</p>
+<div class="discovery-tip">TIP: USE <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> OR ARROW KEYS</div>
+</div>
+<a class="read-all" href="index.html">Prefer reading? Explore the full resume</a>
+</aside>
+<div aria-label="Discovery progress" class="progress-hud" role="status">
+<span aria-hidden="true" class="progress-symbol">+</span>
+<div class="progress-label"><strong>FIELD NOTES COLLECTED</strong><span id="progressText">0 of 32 discovered</span></div>
+<div class="progress-track"><span id="progressFill"></span></div>
+</div>
+<div aria-label="Driving status" class="driving-hud">
+<span class="speed-dial"><strong id="speedText">00</strong><small>SPEED*</small></span>
+<span class="hud-divider"></span>
+<span class="drive-instructions">W / Up: accelerate <span> | </span> S / Down: reverse <span> | </span> A / D: steer<br/><small>* Playful speed indicator, not physical speed</small></span>
+<button aria-label="Show instructions" class="soundless-help" id="helpButton" type="button">?</button>
+</div>
+<div aria-hidden="true" class="mini-map"><canvas height="138" id="minimap" width="190"></canvas><span>YOUR POSITION</span></div>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<div aria-label="Touch driving controls" class="touch-controls">
+<button aria-label="Steer left" class="touch-control steering-left" data-control="left" type="button">LEFT</button>
+<button aria-label="Steer right" class="touch-control steering-right" data-control="right" type="button">RIGHT</button>
+<button aria-label="Accelerate" class="touch-control throttle" data-control="up" type="button">GO</button>
+<button aria-label="Reverse" class="touch-control reverse" data-control="down" type="button">REV</button>
+</div>
+</main>
+</div>
+<div aria-labelledby="introTitle" aria-modal="true" class="intro-overlay" id="introOverlay" role="dialog">
+<div class="intro-card">
+<div class="intro-left">
+<div class="intro-eyebrow">AN INTERACTIVE RESEARCH PORTFOLIO <span> / 2026</span></div>
+<h2 id="introTitle">Your research.<br/>One tiny <em>RC car.</em></h2>
+<p>Hi, I'm <strong>Satwik</strong>, a PhD researcher in Computing Science at the University of Glasgow. I built a tiny RC car arena on my desk. Drive past the laptop and books, steer around the miniature map, and discover my work.</p>
+<div class="intro-controls"><span>DRIVING CONTROLS</span><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>or arrow keys to drive</span></div>
+<div class="intro-buttons"><button class="start-button" id="startButton" type="button">Start driving</button><a class="skip-intro" href="index.html">Read the text resume</a></div>
+</div>
+<div aria-hidden="true" class="intro-art">
+<div class="art-grid"></div><div class="art-road road-one"></div><div class="art-road road-two"></div>
+<div class="art-card card-one"><small>01 / RESEARCH</small><strong>SUSTAINABLE<br/>SOFTWARE</strong></div>
+<div class="art-card card-two"><small>02 / DISCOVER</small><strong>MAKE AN<br/>IMPACT</strong></div>
+<div class="art-car"><div class="art-windshield"></div><div class="art-roof"></div><div class="art-antenna"></div></div>
+<div class="art-label">A DESK-SIZED JOURNEY THROUGH MY RESEARCH</div>
+</div>
+<button aria-label="Close introduction and start driving" class="intro-close" id="introClose" type="button">X</button>
+</div>
+</div>
+<noscript><div class="noscript">The driving game requires JavaScript. You can still read my <a href="index.html">complete text resume</a>.</div></noscript>
 </body>
 </html>

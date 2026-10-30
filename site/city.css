@@ -33,3 +33,13 @@ body.in-arcade .bottom-controls>span:nth-child(6){display:none}
 
 body:not(.in-arcade) #bombHelp{display:none}
 .hud-bomb[hidden],#touchBomb[hidden],#throwButton[hidden]{display:none!important}
+
+/* Keep the legacy 2D entry points in source but hide the buttons and navigation. */
+.hidden-2d-link { display: none !important; }
+/* First-visit work-in-progress popup for the 3D resume experience. */
+.work-progress-overlay {position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:rgba(4,12,14,.79);backdrop-filter:blur(9px)}
+.work-progress-panel {background:#f1f2e6;color:#172929;width:min(470px,100%);padding:36px 34px;box-shadow:0 32px 90px rgba(0,0,0,.55);border-top:5px solid #8ac15b;text-align:left}
+.work-progress-panel h2 {font:900 clamp(34px,6vw,50px)/1.05 var(--face);margin:0 0 14px}
+.work-progress-panel p {font:500 16px/1.65 var(--body);margin:0 0 26px;color:#455e52}
+.work-progress-panel button {border:0;background:#173d35;color:#f3f5e8;font:800 15px var(--face);padding:13px 27px;cursor:pointer}
+.work-progress-panel button:hover,.work-progress-panel button:focus-visible {background:#356948;outline:2px solid #b5d56f;outline-offset:3px}

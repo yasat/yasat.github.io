@@ -156,3 +156,6 @@
 .resume-expanded .entry-top{gap:4px}
 }
 @media(max-width:360px){.resume-expanded .resume-nav .brand-mark{display:none}.resume-expanded .resume-nav-links .back-city{font-size:9px}.resume-expanded .resume-hero-actions a{font-size:11px}}
+
+/* The 2D game remains available by direct URL; its site CTA is intentionally hidden. */
+.hidden-2d-link { display: none !important; }

@@ -1,3 +1,4 @@
+import { coastalTunnels, tunnelInterior, mountainProfile } from './rc-circuits.js?v=2';
 /* RC Grand Prix: projection-based compatibility renderer.
    The driving physics, cameras and resume content remain shared with the WebGL game.
    This renderer provides an immediately visible racing circuit if a browser/GPU
@@ -15,6 +16,20 @@ export class CompatibilityTrackRenderer {
     this.track=trackPoints;this.tangents=trackTangents;
     this.trees=[];this.grandstands=[];this.frame=0;this.segments=[];this.width=0;this.height=0;this.lastCamera=null;
     this.setPits([]);this.makeTrackSegments();
+  }
+  setCircuit(id,props=[]){this.circuit=id;this.coastalProps=props;}
+  drawCoastalBackground(){
+    this.poly([[1360,-.24,-2200],[3460,-.24,-2200],[3460,-.24,2200],[1360,-.24,2200]],'#398fa8');
+    this.poly([[1278,-.31,-1800],[1360,-.31,-1800],[1360,-.31,1800],[1278,-.31,1800]],'#d8c49a');
+    const nearby=(this.coastalProps||[]).filter(p=>Math.hypot(p.x-this.cameraX,p.z-this.cameraZ)<1200).sort((a,b)=>Math.hypot(b.x-this.cameraX,b.z-this.cameraZ)-Math.hypot(a.x-this.cameraX,a.z-this.cameraZ));
+    for(const p of nearby){const {x,z,w,h,d,col}=p,lo=x-w/2,hi=x+w/2,a=z-d/2,b=z+d/2,colour='#'+col.toString(16).padStart(6,'0');const face=(a,b)=>[a,b,[b[0],h,b[2]],[a[0],h,a[2]]];for(const [u,v] of [[[lo,0,a],[hi,0,a]],[[hi,0,a],[hi,0,b]],[[hi,0,b],[lo,0,b]],[[lo,0,b],[lo,0,a]]])this.poly(face(u,v),colour,'#63797e');this.poly([[lo,h,a],[hi,h,a],[hi,h,b],[lo,h,b]],'#9daeb0');}
+  }
+  drawCoastalTunnelWalls(player,camera){
+    const range=coastalTunnels[0],inside=player.u>=range[0]&&player.u<=range[1]&&camera.position.y<50;
+    const segments=this.segments.filter(seg=>{const u=seg.index/(this.track.length-1);return u>=range[0]&&u<=range[1];});
+    if(inside){for(const seg of segments){const a=seg.a,b=seg.b,na=seg.na,nb=seg.nb;for(const side of [-1,1]){const k=side*34;this.poly([[a.x+na.x*k,0,a.z+na.z*k],[b.x+nb.x*k,0,b.z+nb.z*k],[b.x+nb.x*k,24,b.z+nb.z*k],[a.x+na.x*k,24,a.z+na.z*k]],'#253237');}this.poly([[a.x+na.x*17,44,a.z+na.z*17],[b.x+nb.x*17,44,b.z+nb.z*17],[b.x-nb.x*17,44,b.z-nb.z*17],[a.x-na.x*17,44,a.z-na.z*17]],'#172428');if(seg.index%6===0)this.poly([[a.x-na.x*6,43,a.z-na.z*6],[a.x+na.x*6,43,a.z+na.z*6],[b.x+nb.x*6,43,b.z+nb.z*6],[b.x-nb.x*6,43,b.z-nb.z*6]],'#ffe6ac');}}
+    // Paint only the portal ring outside the opening, not a solid wall across the road.
+    for(const [seg,side] of [[segments[0],0],[segments.at(-1),1]]){if(!seg)continue;const p=side?seg.b:seg.a,n=side?seg.nb:seg.na,o=mountainProfile(side),v=([x,y])=>[p.x+n.x*x,y,p.z+n.z*x];for(let j=0;j<tunnelInterior.length-1;j++)this.poly([v(o[j]),v(o[j+1]),v(tunnelInterior[j+1]),v(tunnelInterior[j])],'#657652');}
   }
   setTrees(trees){this.trees=trees||[];}
   setGrandstands(stands){this.grandstands=stands||[];}
@@ -346,7 +361,7 @@ export class CompatibilityTrackRenderer {
   transformCar(x,y,z,heading,dx,dy,dz){
     return [x+dx*Math.cos(heading)-dz*Math.sin(heading),y+dy,z+dx*Math.sin(heading)+dz*Math.cos(heading)];
   }
-  drawCar(x,z,heading,colour='#d7f36b',ghost=false,steering=0){
+  drawCar(x,z,heading,colour='#d7f36b',ghost=false,steering=0,chassis='apex'){
     const t=(dx,dy,dz)=>this.transformCar(x,0,z,heading,dx*.54,dy*.54,dz*.54);
     if(ghost)this.ctx.globalAlpha=.87;
     const shadow=[t(-4.8,.35,-8),t(4.8,.35,-8),t(4.8,.35,8),t(-4.8,.35,8)];
@@ -363,7 +378,8 @@ export class CompatibilityTrackRenderer {
       this.poly([wp(side*5.8,2,zPos-1.5),wp(side*5.8,2,zPos+1.5),wp(side*5.8,3.5,zPos+1.5),wp(side*5.8,3.5,zPos-1.5)],'#b6c8c0');
     }
     this.poly([t(-4.5,2.5,-7.6),t(4.5,2.5,-7.6),t(4.5,4.5,7.1),t(-4.5,4.5,7.1)],'#16262c');
-    this.poly([t(-3.85,4.6,-6),t(3.85,4.6,-6),t(3.85,5.4,5.6),t(-3.85,5.4,5.6)],colour);
+    const [front,rear,length,height]=({apex:[3.85,3.85,6,5.4],velocity:[2.7,3.9,7,4.8],switchback:[4.2,4.4,5.7,5],volt:[3.4,3.4,5.4,6],sentinel:[4.6,4.6,6.5,6.3]})[chassis]||[3.85,3.85,6,5.4];
+    this.poly([t(-front,4.6,-length),t(front,4.6,-length),t(rear,height,5.6),t(-rear,height,5.6)],colour);
     this.poly([t(-3.4,5.5,-2.6),t(3.4,5.5,-2.6),t(3.2,6.6,2.1),t(-3.2,6.6,2.1)],'#20363f');
     this.poly([t(-4.9,3,-7.6),t(4.9,3,-7.6),t(4.9,3.9,-5.8),t(-4.9,3.9,-5.8)],'#171f26');
     this.poly([t(-5,7,6),t(5,7,6),t(5,8.2,7.1),t(-5,8.2,7.1)],colour);
@@ -400,14 +416,14 @@ export class CompatibilityTrackRenderer {
       const p=this.project(pickup.pos.x,4.2,pickup.pos.z);
       if(!p||p.depth>350||p.x<0||p.x>this.width||p.y<0||p.y>this.height)continue;
       const radius=clamp(600/p.depth,5,30),ctx=this.ctx;
-      ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#fbd37f';ctx.strokeStyle='#263a38';ctx.lineWidth=Math.max(1,radius*.17);
+      ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#67cbdb';ctx.strokeStyle='#263a38';ctx.lineWidth=Math.max(1,radius*.17);
       ctx.beginPath();ctx.moveTo(0,-radius);ctx.lineTo(radius,0);ctx.lineTo(0,radius);ctx.lineTo(-radius,0);ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.fillStyle='#203034';ctx.beginPath();ctx.arc(0,0,radius*.43,0,PI2);ctx.fill();
-      ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(radius*.13,-radius*.15,radius*.09,0,PI2);ctx.fill();ctx.restore();
+      ctx.fillStyle='#ffffff';ctx.font=`bold ${radius*1.2}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',0,0);ctx.restore();
     }
   }
   drawBombs(combat){
     if(!combat)return;
+    for(const oil of combat.oils||[]){const p=this.project(oil.x,.3,oil.z);if(p&&p.depth<460){const r=clamp(750/p.depth,3,30);this.ctx.fillStyle="#17252e";this.ctx.beginPath();this.ctx.ellipse(p.x,p.y,r,r*.35,0,0,PI2);this.ctx.fill();}}
     for(const bomb of combat.projectiles||[]){
       const q=this.project(bomb.x,6.5,bomb.z);
       if(!q||q.depth>460)continue;
@@ -416,6 +432,7 @@ export class CompatibilityTrackRenderer {
       ctx.arc(q.x,q.y,r,0,PI2);ctx.fill();ctx.stroke();ctx.restore();
     }
   }
+  drawShield(x,z){const q=this.project(x,4,z);if(!q)return;const r=clamp(650/q.depth,5,65),ctx=this.ctx;ctx.save();ctx.strokeStyle='#94e6fa';ctx.fillStyle='rgba(148,230,250,.12)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(q.x,q.y,r,0,PI2);ctx.fill();ctx.stroke();ctx.restore();}
   drawStunCloud(x,z){
     const q=this.project(x,16,z);if(!q)return;
     const ctx=this.ctx,r=clamp(1300/q.depth,7,52);ctx.save();ctx.fillStyle='rgba(235,242,238,.88)';ctx.strokeStyle='rgba(69,105,100,.5)';ctx.lineWidth=2;
@@ -430,7 +447,7 @@ export class CompatibilityTrackRenderer {
     ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;
     this.drawSky(camera);
     // Draw distant scenery, then road surfaces from back to front.
-    this.drawStadiumPerimeter();
+    if(this.circuit==='coastal')this.drawCoastalBackground();else this.drawStadiumPerimeter();
     this.drawTrees(player);
     const all=[...this.segments,...this.pitSegments];
     all.sort((l,r)=>{
@@ -439,7 +456,8 @@ export class CompatibilityTrackRenderer {
       return dr-dl;
     });
     for(const seg of all)this.drawSegment(seg);
-    if(mode==='arcade'){this.drawArcadePads();this.drawBombPickups(combat,now);}
+    if(mode==='arcade'){this.drawArcadePads();this.drawBombPickups(combat,now);if(combat?.engineering)for(const pit of this.pits){const pts=pit.points,i=Math.floor(pts.length/2),p=pts[i],n=this.normal(pts[i-1],pts[i+1]),t={x:-n.z,z:n.x};this.poly([[-8,-12],[8,-12],[8,12],[-8,12]].map(([a,b])=>[p.x+n.x*a+t.x*b,.23,p.z+n.z*a+t.z*b]),'rgba(199,232,129,.5)');}}
+    if(this.circuit==='coastal')this.drawCoastalTunnelWalls(player,camera);
     this.drawTrackBarriers(player);
     this.drawGrandstands();
     this.drawPitWayfinding(player);
@@ -447,18 +465,18 @@ export class CompatibilityTrackRenderer {
     this.drawGantry();
     for(const o of opponents.values()){
       const x=o.mesh?.position.x??o.x,z=o.mesh?.position.z??o.z,heading=o.mesh?.rotation.y!=null?-o.mesh.rotation.y:o.heading;
-      this.drawCar(x,z,heading,o.hex||'#ffb37d',true,o.steering||0);
+      this.drawCar(x,z,heading,o.hex||'#ffb37d',true,o.steering||0,o.setup?.chassis);if(now<(o.shieldUntil||0))this.drawShield(x,z);
       if(now<(o.stunnedUntil||0))this.drawStunCloud(x,z);
     }
-    if(!inspector){this.drawCar(player.x,player.z,player.heading,'#d7f36b',false,player.steerAngle||0);if(now<(combat?.localStunUntil||0))this.drawStunCloud(player.x,player.z);}
+    if(!inspector){this.drawCar(player.x,player.z,player.heading,player.hex||'#d7f36b',false,player.steerAngle||0,player.chassis);if(now<(combat?.shieldUntil||0))this.drawShield(player.x,player.z);if(now<(combat?.localStunUntil||0))this.drawStunCloud(player.x,player.z);}
     if(mode==='arcade')this.drawBombs(combat);
-    if(mode==='arcade'){
+    if(mode==='arcade'&&!combat?.hudHidden){
       const ctx=this.ctx;ctx.save();ctx.fillStyle='rgba(10,26,27,.78)';ctx.fillRect(this.width/2-85,6,170,23);
-      ctx.textAlign='center';ctx.font='900 11px Arial';ctx.fillStyle='#dff1a1';ctx.fillText('ARCADE  /  RACE VIEW',this.width/2,22);ctx.restore();
+      ctx.textAlign='center';ctx.font='900 11px Arial';ctx.fillStyle='#dff1a1';ctx.fillText((combat?.rules||'arcade').toUpperCase()+' / RACE VIEW',this.width/2,22);ctx.restore();
     }
     // A tiny visible UI label makes the compatibility state unambiguous.
-    ctx.save();ctx.globalAlpha=.8;ctx.fillStyle='#0c2426';ctx.fillRect(14,this.height-75,162,23);
-    ctx.fillStyle='#e0f3a1';ctx.font='700 10px Arial';ctx.fillText('COMPATIBILITY CAMERA',22,this.height-59);ctx.restore();
+    if(!combat?.hudHidden){ctx.save();ctx.globalAlpha=.8;ctx.fillStyle='#0c2426';ctx.fillRect(14,this.height-75,162,23);
+    ctx.fillStyle='#e0f3a1';ctx.font='700 10px Arial';ctx.fillText('COMPATIBILITY CAMERA',22,this.height-59);ctx.restore();}
     this.frame++;
   }
 }
